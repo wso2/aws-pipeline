@@ -36,5 +36,3 @@ for mgtdbscript in /home/wso2user/dbScripts/MySQL/apmgt/*.sql
    echo "Executing script: $mgtdbscript ..."
    mysql -u CF_DB_USERNAME -pCF_DB_PASSWORD -h CF_DB_HOST -P CF_DB_PORT < $mgtdbscript
  done
-
-
