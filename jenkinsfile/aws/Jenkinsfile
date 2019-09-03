@@ -1,0 +1,235 @@
+/*
+*  Copyright (c) 2018, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*
+*  WSO2 Inc. licenses this file to you under the Apache License,
+*  Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/
+
+@Library('wso2-jenkins-shared-lib')
+import org.wso2.util.Constants
+
+//Nodes
+def NODE_MASTER = "master"
+node(NODE_MASTER) {
+    def PRODUCT = "${params.PRODUCT}"
+    def VERSION = "${params.VERSION}"
+    def DEPLOYMENT_PATTERN = "${env.DEPLOYMENT_PATTERN}"
+    def PROD = "Prod"
+    def STAGING = "Staging"
+    def DEV = "Dev"
+    //Stacks
+    def STACK_STAGING = "staging-stack"
+    def STACK_PROD = "prod-stack"
+    def STACK_DEV = "dev-stack"
+    //Constants
+    def WUM_CREDS = 'wum_creds'
+    def AWS_CREDS = 'aws_creds'
+    //Test Endpoint
+    def TEST_ENDPOINT_KEY = "HttpURL"
+    //Directories
+    def DEPLOYMENT_DIR = "deployment"
+    def CONF_HOME_DIR = "configs"
+    def ARTIFACTS_DIR = "cicd-test-artifacts"
+    def PIPELINE_RESOURCES_DIR = "resources"
+    def IMAGE_RESOURCES = "image-resources"
+    def PUPPET_CONF_DIR = "${WORKSPACE}/${CONF_HOME_DIR}"
+    def ARTIFACT_LOC = "${WORKSPACE}/${ARTIFACTS_DIR}/artifacts"
+    def ENDPOINT_RESOURCES = "${ARTIFACT_LOC}/repository/deployment/server/carbonapps"
+    def IMAGE_RESOURCES_LOC = "${WORKSPACE}/${IMAGE_RESOURCES}/"
+    def RESOURCES = Constants.Paths.RESOURCES
+    def PACKER_RESOURCES = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/packer-resources"
+    def WUM_HOME = "/var/lib/jenkins/.wum3/products"
+    //Config Files
+    def ENV = '/home/jenkins/jenkins_env'
+    def PUPPET_CONF = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/puppet/apply-config.sh"
+    def DEV_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/sampleCFN/sample.yaml"
+    def PACKER_MANIFEST = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/manifest.json"
+    def PACKER_JSON = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/packer.json"
+    def AWS_CREDS_LOC = '/home/ubuntu/.aws/credentials'
+    //repos
+    def GIT_REPO_RESOURCES = 'https://github.com/wso2-incubator/jenkins-pipeline-artifacts'
+    //mvn remove download logs
+    def REMOVE_LOGS = 'org.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn'
+
+    try {
+        stage(Constants.Stages.SETUP_ENV) {
+            log.info "Setting up the Environment"
+            file = load ENV
+            env.REGION = getAvailabilityZone()
+            cloneRepoToDir env.GIT_REPO_ARTIFACTS, ARTIFACTS_DIR
+            cloneRepoToDir "$GIT_REPO_RESOURCES", PIPELINE_RESOURCES_DIR
+            cloneRepoToDir env.GIT_REPO_CF, DEPLOYMENT_DIR
+            cloneRepoToDir env.GIT_REPO_PUPPET, PUPPET_CONF_DIR
+            if (!fileExists("${IMAGE_RESOURCES}")) {
+                sh "mkdir $IMAGE_RESOURCES"
+            }
+            copy([src: "${RESOURCES}/*", dest: "${IMAGE_RESOURCES_LOC}"])
+            copy([src: "${PACKER_RESOURCES}/*", dest: "${IMAGE_RESOURCES_LOC}"])
+            copy([src: "${ENDPOINT_RESOURCES}/*", dest: "${IMAGE_RESOURCES_LOC}"])
+        }
+
+        stage(Constants.Stages.BUILD_PACK) {
+            log.info "Generate Pack with configs"
+            applyConfig([product            : "${PRODUCT}",
+                         version            : "${VERSION}",
+                         deploymentPattern  : "${env.DeploymentPattern}",
+                         wum_creds          : "${WUM_CREDS}",
+                         puppetManifest     : "${PUPPET_CONF}",
+                         artifactsLoc       : "${ARTIFACT_LOC}",
+                         zipLoc             : "${IMAGE_RESOURCES_LOC}",
+                         wumHome            : "${WUM_HOME}",
+                         puppetConfLoc      : "${PUPPET_CONF_DIR}"])
+        }
+
+        stage(Constants.Stages.BUILD_IMAGE) {
+            log.info " Generate AMI "
+            env.IMAGE_ID = buildImage([product          : "${PRODUCT}",
+                                       version          : "${VERSION}",
+                                       deploymentPattern: "${env.DeploymentPattern}",
+                                       dbType           : "${env.DBType}",
+                                       region           : "${REGION}",
+                                       packerJson       : "${PACKER_JSON}",
+                                       packerManifest   : "${PACKER_MANIFEST}",
+                                       awsCredsFile     : "${AWS_CREDS_LOC}",
+                                       imageResources   : "${IMAGE_RESOURCES_LOC}"])
+        }
+
+        stage(Constants.Stages.DEPLOY_DEV) {
+            log.info "Deploying to Development"
+            DEV_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/cf-dev.yaml"
+            env.TEST_ENDPOINT = deployAWS([wso2InstanceType: "${env.WSO2InstanceType}",
+                       product         : "${PRODUCT}",
+                       version         : "${VERSION}",
+                       keyPairName     : "${env.KeyPairName}",
+                       certName        : "${env.CertificateName}",
+                       dbUsername      : "${env.DBUsername}",
+                       dbPassword      : "${env.DBPassword}",
+                       dbType          : "${env.DBType}",
+                       amiID           : "${env.IMAGE_ID}",
+                       credID          : "${AWS_CREDS}",
+                       region          : "${env.REGION}",
+                       stackName       : "${STACK_DEV}",
+                       cf              : "${DEV_CF}",
+                       testEndpoint    : "${TEST_ENDPOINT_KEY}",
+                       awsCredsFile    : "${AWS_CREDS_LOC}",
+                       environment     : "${DEV}"])
+        }
+
+        stage(Constants.Stages.RUNNING_TESTS) {
+            log.info "Running Test"
+            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
+            dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
+                executeTests "${TEST_SCRIPT}"
+            }
+        }
+
+         stage(Constants.Stages.APPROVE_STAGING) {
+            env.IS_APPROVED = false
+            timeout(time:3, unit:'DAYS') {
+                env.IS_APPROVED = input(
+                id: "APPROVE_TO_STAGING",
+                message: "Do you want to proceed to deploy in Staging?",
+                ok: "OK",
+                parameters:[booleanParam(defaultValue:false, name: 'Approve', description: 'Deploy to Staging?')])
+                if (env.IS_APPROVED != 'true') {
+                    currentBuild.result = "ABORTED"
+                    echo "Approval to deploy in staging was Declined."
+                }
+            }
+         }
+
+        stage(Constants.Stages.DEPLOY_STAGING) {
+            log.info "Deploying to Staging"
+            STAGING_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/cf-staging.yaml"
+            env.TEST_ENDPOINT = deployAWS([wso2InstanceType: "${env.WSO2InstanceType}",
+                       product         : "${PRODUCT}",
+                       version         : "${VERSION}",
+                       keyPairName     : "${env.KeyPairName}",
+                       certName        : "${env.CertificateName}",
+                       dbUsername      : "${env.DBUsername}",
+                       dbPassword      : "${env.DBPassword}",
+                       dbType          : "${env.DBType}",
+                       amiID           : "${env.IMAGE_ID}",
+                       credID          : "${AWS_CREDS}",
+                       region          : "${env.REGION}",
+                       stackName       : "${STACK_STAGING}",
+                       cf              : "${STAGING_CF}",
+                       testEndpoint    : "${TEST_ENDPOINT_KEY}",
+                       awsCredsFile    : "${AWS_CREDS_LOC}",
+                       environment     : "${STAGING}"])
+        }
+
+        stage(Constants.Stages.RUNNING_TESTS) {
+            log.info "Running Test"
+            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
+            dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
+                executeTests "${TEST_SCRIPT}"
+            }
+        }
+
+         stage(Constants.Stages.APPROVE_PRODUCTION) {
+            env.IS_APPROVED = false
+            timeout(time:3, unit:'DAYS') {
+                env.IS_APPROVED = input(
+                id: "APPROVE_TO_PRODUCTION",
+                message: "Do you want to proceed to deploy in Production?",
+                ok: "OK",
+                parameters:[booleanParam(defaultValue:false, name: 'Approve', description: 'Deploy to Production?')])
+                if (env.IS_APPROVED != 'true') {
+                    currentBuild.result = "ABORTED"
+                    echo "Approval to deploy in production was Declined."
+                }
+            }
+         }
+
+        stage(Constants.Stages.DEPLOY_PRODUCTION) {
+            log.info "Deploying to Production"
+            PROD_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/cf.yaml"
+            env.TEST_ENDPOINT = deployAWS([wso2InstanceType: "${env.WSO2InstanceType}",
+                       product         : "${PRODUCT}",
+                       version         : "${VERSION}",
+                       keyPairName     : "${env.KeyPairName}",
+                       certName        : "${env.CertificateName}",
+                       dbUsername      : "${env.DBUsername}",
+                       dbPassword      : "${env.DBPassword}",
+                       dbType          : "${env.DBType}",
+                       amiID           : "${env.IMAGE_ID}",
+                       credID          : "${AWS_CREDS}",
+                       region          : "${env.REGION}",
+                       stackName       : "${STACK_PROD}",
+                       cf              : "${PROD_CF}",
+                       testEndpoint    : "${TEST_ENDPOINT_KEY}",
+                       awsCredsFile    : "${AWS_CREDS_LOC}",
+                       environment     : "${PROD}"])
+        }
+
+        stage(Constants.Stages.RUNNING_TESTS) {
+            log.info " Running Test "
+            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
+            dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
+                executeTests "${TEST_SCRIPT}"
+            }
+        }
+    } catch (exc) {
+        log.err "Caught: ${exc}"
+        String recipient = env.Email
+        mail subject: "${env.JOB_NAME} (${env.BUILD_NUMBER}) build failed",
+                body: "${env.JOB_NAME} build ${env.BUILD_NUMBER} failed in Jenkins. Check console output at $BUILD_URL to view the results.",
+                to: recipient,
+                replyTo: recipient,
+                from: 'noreply@wso2cicd.com'
+        throw exc
+    }
+
+}
