@@ -14,7 +14,7 @@
 
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  WSO2 CICD Pipe line
+  WSO2 AWS PipeLine
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
@@ -158,6 +158,7 @@ Parameters:
     NoEcho: true
   GitHubHookRepository:
     Type: String
+    Description: (eg:cicd-test-artifacts)
   WUMUsername:
     Type: String
     Default: ""
@@ -342,7 +343,7 @@ Resources:
 Outputs:
   JenkinsManagementConsoleURL:
     Value: !Sub 'http://${WSO2JenkinsInstance.PublicDnsName}:8080/blue/pipelines'
-    Description: Jenkins Management Console URL
+    Description: Jenkins Console URL
 Mappings:
   WSO2UbuntuAMIRegionMap:
     us-east-1:
