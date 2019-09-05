@@ -18,6 +18,7 @@ This pipeline expands with continuous integration by deploying all code changes 
   - ELK: For centralized logging
 
   - Prometheus : For monitoring deployments and visualization using Grafana
+  
 
 ![Architecture Diagram](pipeline_architecture_diagram.png)
 
