@@ -341,7 +341,7 @@ Resources:
         - '0'
         - !GetAZs ''
 Outputs:
-  JenkinsManagementConsoleURL:
+  JenkinsConsoleURL:
     Value: !Sub 'http://${WSO2JenkinsInstance.PublicDnsName}:8080/blue/pipelines'
     Description: Jenkins Console URL
 Mappings:
@@ -358,3 +358,55 @@ Mappings:
       wso2ei: ami-0f0b65de0d8519349
       wso2is: ami-05c18353016e25dda
       wso2am: ami-071caa9c6506096b9
+    us-west-2:
+      wso2ei: ami-0620bf520a1ea4784
+      wso2is: ami-0e5ce149a2a7949c3
+      wso2am: ami-0c1a16413b61d6459
+    ap-south-1:
+      wso2ei: ami-0a977053b76e37fa3
+      wso2is: ami-0ec77e9bf3ed64b8f
+      wso2am: ami-0e7ddbaa21efa796a
+    ap-northeast-1:
+      wso2ei: ami-0a87abd7591a1fe5c
+      wso2is: ami-0c2114d43c3e60278
+      wso2am: ami-0fe54148265bc4fc8
+    ap-northeast-2:
+      wso2ei: ami-087fab1cb573bd591
+      wso2is: ami-007f701a6f3d87dd7
+      wso2am: ami-0c178a7190a284cd4
+    ap-southeast-1:
+      wso2ei: ami-0805954a78decc6e9
+      wso2is: ami-0e0e966bfbc7171f4
+      wso2am: ami-06aaf1bd99069f7ca
+    ap-southeast-2:
+      wso2ei: ami-0c665e424de87ae44
+      wso2is: ami-0eac7d08410ef048e
+      wsoam: ami-047356573a1ab0723
+    ca-central-1:
+      wso2ei: ami-0c001130ca85cc8a3
+      wso2is: ami-04f2706244e9af7ae
+      wso2am: ami-0ae8648aa11b0f726
+    eu-central-1:
+      wso2ei: ami-00bdbea580b761bd6
+      wso2is: ami-0d617f4e9df2d031e
+      wso2am: ami-083ad969a4f7d358b
+    eu-west-1:
+      wso2ei: ami-058cdddf85daabc8c
+      wso2is: ami-0d141793c2494f362
+      wso2am: ami-0b5b9325cf4beee5c
+    eu-west-2:
+      wso2ei: ami-086da18d7cece0f1b
+      wso2is: ami-080d8dc4ba71eab92
+      wso2am: ami-0207d76a0841bb0c6
+    eu-west-3:
+      wso2ei: ami-0a3489ad9ad8273f9
+      wso2is: ami-0988c1970eeec51f2
+      wso2am: ami-0f7da703916d54017
+    eu-north-1:
+      wso2ei: ami-09c13e03aaeaff9bf
+      wso2is: ami-09808044adf8b1526
+      wso2am: ami-0fd09846111cfada5
+    sa-east-1:
+      wso2ei: ami-095993244f2ad96de
+      wso2is: ami-077e6f1918cb74473
+      wso2am: ami-0958afb56a645d72b
