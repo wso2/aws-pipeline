@@ -381,7 +381,7 @@ Mappings:
     ap-southeast-2:
       wso2ei: ami-0c665e424de87ae44
       wso2is: ami-0eac7d08410ef048e
-      wsoam: ami-047356573a1ab0723
+      wso2am: ami-047356573a1ab0723
     ca-central-1:
       wso2ei: ami-0c001130ca85cc8a3
       wso2is: ami-04f2706244e9af7ae
