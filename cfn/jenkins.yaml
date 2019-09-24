@@ -301,7 +301,7 @@ Resources:
 
           export jenkinshookurl=http://$publichostname:8080/github-webhook/
           export githubhookurl=https://api.github.com/repos/${GitHubUsername}/${GitHubHookRepository}/hooks
-          sleep 60
+          sleep 120
           export JENKINS_CRUMB=$(curl -s 'http://admin:admin@localhost:8080/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)')
           curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"wum_creds","username":"${WUMUsername}","password": "${WUMPassword}","description": "WUM Credentials","$class": "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"}}' -v >> /home/jenkins/text.txt
           curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"aws_creds","accessKey":"${AWSAccessKeyId}","secretKey": "${AWSAccessKeySecret}","description": "AWS Credentials","$class": "com.cloudbees.jenkins.plugins.awscredentials.AWSCredentialsImpl"}}' -v >> /home/jenkins/text.txt
@@ -402,10 +402,6 @@ Mappings:
       wso2ei: ami-0a3489ad9ad8273f9
       wso2is: ami-0988c1970eeec51f2
       wso2am: ami-0f7da703916d54017
-    eu-north-1:
-      wso2ei: ami-09c13e03aaeaff9bf
-      wso2is: ami-09808044adf8b1526
-      wso2am: ami-0fd09846111cfada5
     sa-east-1:
       wso2ei: ami-095993244f2ad96de
       wso2is: ami-077e6f1918cb74473
