@@ -22,7 +22,9 @@
       "ami_description": "WSO2-CICD AMI",
       "source_ami_filter": {
         "filters": {
-          "tag:type": "WSO2 CICD Base AMI"
+          "name": "wso2-elk-1567419998",
+          "virtualization-type": "hvm",
+          "root-device-type": "ebs"
         },
         "owners": ["700650335418"],
         "most_recent": true
