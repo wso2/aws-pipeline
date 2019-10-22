@@ -35,6 +35,8 @@ node(NODE_MASTER) {
     //Constants
     def WUM_CREDS = 'wum_creds'
     def AWS_CREDS = 'aws_creds'
+    def GITHUB_CREDS = 'github_creds'
+    def DB_CREDS = 'db_creds'
     //Test Endpoint
     def TEST_ENDPOINT_KEY = "HttpURL"
     //Directories
@@ -67,10 +69,22 @@ node(NODE_MASTER) {
             log.info "Setting up the Environment"
             file = load ENV
             env.REGION = getAvailabilityZone()
-            cloneRepoToDir env.GIT_REPO_ARTIFACTS, ARTIFACTS_DIR
-            cloneRepoToDir "$GIT_REPO_RESOURCES", PIPELINE_RESOURCES_DIR
-            cloneRepoToDir env.GIT_REPO_CF, DEPLOYMENT_DIR
-            cloneRepoToDir env.GIT_REPO_PUPPET, PUPPET_CONF_DIR
+            cloneRepoToDir ([repoUrl    :"${env.GIT_REPO_ARTIFACTS}",
+                             directory  :"${ARTIFACTS_DIR}",
+                             credID     : "${GITHUB_CREDS}" ])
+
+            cloneRepoToDir ([repoUrl    :"${GIT_REPO_RESOURCES}",
+                             directory  :"${PIPELINE_RESOURCES_DIR}",
+                             credID     :"${GITHUB_CREDS}"])
+
+            cloneRepoToDir ([repoUrl    :"${env.GIT_REPO_CF}",
+                             directory  :"${DEPLOYMENT_DIR}",
+                             credID     :"${GITHUB_CREDS}"])
+
+            cloneRepoToDir ([repoUrl    :"${GIT_REPO_PUPPET}",
+                             directory  :"${PUPPET_CONF_DIR}",
+                             credID     :"${GITHUB_CREDS}"])
+
             if (!fileExists("${IMAGE_RESOURCES}")) {
                 sh "mkdir $IMAGE_RESOURCES"
             }
@@ -101,7 +115,7 @@ node(NODE_MASTER) {
                                        region           : "${REGION}",
                                        packerJson       : "${PACKER_JSON}",
                                        packerManifest   : "${PACKER_MANIFEST}",
-                                       awsCredsFile     : "${AWS_CREDS_LOC}",
+                                       credID           : "${AWS_CREDS}",
                                        imageResources   : "${IMAGE_RESOURCES_LOC}"])
         }
 
@@ -113,16 +127,14 @@ node(NODE_MASTER) {
                        version         : "${VERSION}",
                        keyPairName     : "${env.KeyPairName}",
                        certName        : "${env.CertificateName}",
-                       dbUsername      : "${env.DBUsername}",
-                       dbPassword      : "${env.DBPassword}",
+                       dbCredID        : "${DB_CREDS}",
                        dbType          : "${env.DBType}",
                        amiID           : "${env.IMAGE_ID}",
-                       credID          : "${AWS_CREDS}",
+                       awsCredID       : "${AWS_CREDS}",
                        region          : "${env.REGION}",
                        stackName       : "${STACK_DEV}",
                        cf              : "${DEV_CF}",
                        testEndpoint    : "${TEST_ENDPOINT_KEY}",
-                       awsCredsFile    : "${AWS_CREDS_LOC}",
                        environment     : "${DEV}"])
         }
 
@@ -157,16 +169,14 @@ node(NODE_MASTER) {
                        version         : "${VERSION}",
                        keyPairName     : "${env.KeyPairName}",
                        certName        : "${env.CertificateName}",
-                       dbUsername      : "${env.DBUsername}",
-                       dbPassword      : "${env.DBPassword}",
+                       dbCredID        : "${DB_CREDS}",
                        dbType          : "${env.DBType}",
                        amiID           : "${env.IMAGE_ID}",
-                       credID          : "${AWS_CREDS}",
+                       awsCredID       : "${AWS_CREDS}",
                        region          : "${env.REGION}",
                        stackName       : "${STACK_STAGING}",
                        cf              : "${STAGING_CF}",
                        testEndpoint    : "${TEST_ENDPOINT_KEY}",
-                       awsCredsFile    : "${AWS_CREDS_LOC}",
                        environment     : "${STAGING}"])
         }
 
@@ -201,16 +211,14 @@ node(NODE_MASTER) {
                        version         : "${VERSION}",
                        keyPairName     : "${env.KeyPairName}",
                        certName        : "${env.CertificateName}",
-                       dbUsername      : "${env.DBUsername}",
-                       dbPassword      : "${env.DBPassword}",
+                       dbCredID        : "${DB_CREDS}",
                        dbType          : "${env.DBType}",
                        amiID           : "${env.IMAGE_ID}",
-                       credID          : "${AWS_CREDS}",
+                       awsCredID       : "${AWS_CREDS}",
                        region          : "${env.REGION}",
                        stackName       : "${STACK_PROD}",
                        cf              : "${PROD_CF}",
                        testEndpoint    : "${TEST_ENDPOINT_KEY}",
-                       awsCredsFile    : "${AWS_CREDS_LOC}",
                        environment     : "${PROD}"])
         }
 
