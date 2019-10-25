@@ -310,6 +310,8 @@ Resources:
           sleep 120
           bash /var/lib/jenkins/update_password.sh ${JenkinsPassword} >> /home/jenkins/password.log
           service jenkins restart
+          sleep 150
+          java -jar /home/jenkins/resources/jenkins-cli.jar -s http://localhost:8080 -http -auth admin:${JenkinsPassword} build wso2am-2.6.0
           /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2JenkinsInstance --region ${AWS::Region}
   WSO2JenkinsSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
