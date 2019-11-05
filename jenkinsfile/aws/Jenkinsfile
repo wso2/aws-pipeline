@@ -34,7 +34,6 @@ node(NODE_MASTER) {
     def STACK_DEV = "dev-stack"
     //Constants
     def WUM_CREDS = 'wum_creds'
-    def AWS_CREDS = 'aws_creds'
     def GITHUB_CREDS = 'github_creds'
     def DB_CREDS = 'db_creds'
     //Test Endpoint
@@ -58,7 +57,6 @@ node(NODE_MASTER) {
     def DEV_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/sampleCFN/sample.yaml"
     def PACKER_MANIFEST = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/manifest.json"
     def PACKER_JSON = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/packer.json"
-    def AWS_CREDS_LOC = '/home/ubuntu/.aws/credentials'
     //repos
     def GIT_REPO_RESOURCES = 'https://github.com/wso2/aws-pipeline'
     //mvn remove download logs
@@ -115,7 +113,7 @@ node(NODE_MASTER) {
                                        region           : "${REGION}",
                                        packerJson       : "${PACKER_JSON}",
                                        packerManifest   : "${PACKER_MANIFEST}",
-                                       credID           : "${AWS_CREDS}",
+                                       iamRole          : "${env.IAMRole}",
                                        imageResources   : "${IMAGE_RESOURCES_LOC}"])
         }
 
@@ -130,7 +128,7 @@ node(NODE_MASTER) {
                        dbCredID        : "${DB_CREDS}",
                        dbType          : "${env.DBType}",
                        amiID           : "${env.IMAGE_ID}",
-                       awsCredID       : "${AWS_CREDS}",
+                       iamRole         : "${env.IAMRole}",
                        region          : "${env.REGION}",
                        stackName       : "${STACK_DEV}",
                        cf              : "${DEV_CF}",
@@ -172,7 +170,7 @@ node(NODE_MASTER) {
                        dbCredID        : "${DB_CREDS}",
                        dbType          : "${env.DBType}",
                        amiID           : "${env.IMAGE_ID}",
-                       awsCredID       : "${AWS_CREDS}",
+                       iamRole         : "${env.IAMRole}",
                        region          : "${env.REGION}",
                        stackName       : "${STACK_STAGING}",
                        cf              : "${STAGING_CF}",
@@ -214,7 +212,7 @@ node(NODE_MASTER) {
                        dbCredID        : "${DB_CREDS}",
                        dbType          : "${env.DBType}",
                        amiID           : "${env.IMAGE_ID}",
-                       awsCredID       : "${AWS_CREDS}",
+                       iamRole         : "${env.IAMRole}",
                        region          : "${env.REGION}",
                        stackName       : "${STACK_PROD}",
                        cf              : "${PROD_CF}",
