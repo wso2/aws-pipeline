@@ -113,7 +113,6 @@ node(NODE_MASTER) {
                                        region           : "${REGION}",
                                        packerJson       : "${PACKER_JSON}",
                                        packerManifest   : "${PACKER_MANIFEST}",
-                                       iamRole          : "${env.IAMRole}",
                                        imageResources   : "${IMAGE_RESOURCES_LOC}"])
         }
 
