@@ -11,15 +11,14 @@
   "builders": [
     {
       "type": "amazon-ebs",
-      "access_key": "{{user `aws_access_key`}}",
-      "secret_key": "{{user `aws_secret_key`}}",
+      "profile": "{{user `iamRole`}}",
       "region":"{{user `region`}}",
       "associate_public_ip_address": true,
       "instance_type": "m4.xlarge",
       "ssh_username": "ubuntu",
       "ami_name": "WSO2-CICD-UBUNTU-IMAGE-{{timestamp}}",
       "ami_groups": "all",
-      "ami_description": "WSO2-CICD AMI",
+      "ami_description": "WSO2-AWS-CI/CD-Pipeline AMI",
       "source_ami_filter": {
         "filters": {
           "name": "wso2-elk-1567419998",
