@@ -54,7 +54,7 @@ node(NODE_MASTER) {
     //Config Files
     def ENV = '/home/jenkins/jenkins_env'
     def PUPPET_CONF = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/puppet/apply-config.sh"
-    def ARTIFACT_CONF = "${ARTIFACT_LOC}/buildArtifact.sh"
+    def ARTIFACT_CONF = "${WORKSPACE}/${ARTIFACTS_DIR}/buildArtifact.sh"
     def PACKER_MANIFEST = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/manifest.json"
     def PACKER_JSON = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/packer.json"
     //repos
