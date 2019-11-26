@@ -93,7 +93,7 @@ node(NODE_MASTER) {
         stage(Constants.Stages.BUILD_ARTIFACTS) {
                     log.info "Build product artifacts"
                     buildArtifacts([artifactConf       : "${ARTIFACT_CONF}",
-                                 artifactsLoc       : "${ARTIFACT_LOC}"])
+                                    artifactsLoc       : "${WORKSPACE}/${ARTIFACTS_DIR}"])
                     copy([src: "${ENDPOINT_RESOURCES}/*", dest: "${IMAGE_RESOURCES_LOC}"])
                 }
 
