@@ -66,6 +66,7 @@ FAILED_RM_UNZIP=16
 FAILED_ARTIFACT_APPLY=17
 FAILED_WUM_INIT=18
 FAILED_DOWNLOAD_PACK=19
+FAILED_DOWNLOAD_PATCH_FILE=20
 
 #Specify deployment directory
 if [ ${PRODUCT} = "wso2ei" ] ; then
@@ -135,17 +136,38 @@ if $INITIAL_RUN; then
         fi
     fi
 
-    # Unzip the WUM updated product
-    echo "Unzip the WUM updated product..." &>> wum.log
+    # Unzip the product pack
+    echo "Unzip the product pack..." &>> wum.log
     ${UNZIP} -q ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}.zip -d ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/
     if [ $? -ne 0 ] ; then
-        echo "Failed to unzip the WUM updated product ${PRODUCT}-${PRODUCT_VERSION}..."
+        echo "Failed to unzip the product pack ${PRODUCT}-${PRODUCT_VERSION}..."
         exit ${FAILED_UNZIP}
     fi
     echo "Remove the zipped product..." &>> wum.log
     ${RM} ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}.zip
     if [ $? -ne 0 ] ; then
         echo "Failed to remove the zipped product ${PRODUCT}-${PRODUCT_VERSION}..."
+        exit ${FAILED_RM_UNZIP}
+    fi
+
+    # Download the patch file for clustering
+    echo "Download the patch file from S3 bucket..." &>> wum.log
+    wget https://wso2-patches.s3-us-west-2.amazonaws.com/patch9999.zip -P ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/
+    if [ $? -eq 1 ] ; then
+            exit ${FAILED_DOWNLOAD_PATCH_FILE}
+    fi
+
+    # Unzip the patch file
+    echo "Unzip the patch file..." &>> wum.log
+    ${UNZIP} -q ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/patch9999.zip -d ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/patches/
+    if [ $? -ne 0 ] ; then
+        echo "Failed to unzip the patch file patch9999.zip..."
+        exit ${FAILED_UNZIP}
+    fi
+    echo "Remove the zipped patch file..." &>> wum.log
+    ${RM} ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/patches/patch9999.zip
+    if [ $? -ne 0 ] ; then
+        echo "Failed to remove the zipped patch file patch9999.zip..."
         exit ${FAILED_RM_UNZIP}
     fi
 fi

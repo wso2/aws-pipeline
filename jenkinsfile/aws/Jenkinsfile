@@ -54,7 +54,7 @@ node(NODE_MASTER) {
     //Config Files
     def ENV = '/home/jenkins/jenkins_env'
     def PUPPET_CONF = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/puppet/apply-config.sh"
-    def DEV_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/sampleCFN/sample.yaml"
+    def ARTIFACT_CONF = "${ARTIFACT_LOC}/buildArtifact.sh"
     def PACKER_MANIFEST = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/manifest.json"
     def PACKER_JSON = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/packer.json"
     //repos
@@ -88,8 +88,15 @@ node(NODE_MASTER) {
             }
             copy([src: "${RESOURCES}/*", dest: "${IMAGE_RESOURCES_LOC}"])
             copy([src: "${PACKER_RESOURCES}/*", dest: "${IMAGE_RESOURCES_LOC}"])
-            copy([src: "${ENDPOINT_RESOURCES}/*", dest: "${IMAGE_RESOURCES_LOC}"])
         }
+
+        stage(Constants.Stages.BUILD_ARTIFACTS) {
+                    log.info "Build product artifacts"
+                    applyConfig([artifactConf       : "${ARTIFACT_CONF}",
+                                 artifactsLoc       : "${ARTIFACT_LOC}"])
+                    copy([src: "${ENDPOINT_RESOURCES}/*", dest: "${IMAGE_RESOURCES_LOC}"])
+                }
+
 
         stage(Constants.Stages.BUILD_PACK) {
             log.info "Generate Pack with configs"
