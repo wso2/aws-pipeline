@@ -159,13 +159,13 @@ if $INITIAL_RUN; then
 
     # Unzip the patch file
     echo "Unzip the patch file..." &>> wum.log
-    ${UNZIP} -q ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/patch9999.zip -d ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/patches/
+    ${UNZIP} -q ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/patch9999.zip -d ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/
     if [ $? -ne 0 ] ; then
         echo "Failed to unzip the patch file patch9999.zip..."
         exit ${FAILED_UNZIP}
     fi
     echo "Remove the zipped patch file..." &>> wum.log
-    ${RM} ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/patches/patch9999.zip
+    ${RM} ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/patch9999.zip
     if [ $? -ne 0 ] ; then
         echo "Failed to remove the zipped patch file patch9999.zip..."
         exit ${FAILED_RM_UNZIP}
