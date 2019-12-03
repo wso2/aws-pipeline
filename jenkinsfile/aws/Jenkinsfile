@@ -32,12 +32,14 @@ node(NODE_MASTER) {
     def STACK_STAGING = "staging-stack"
     def STACK_PROD = "prod-stack"
     def STACK_DEV = "dev-stack"
+    def STACK_NETWORK = "network"
     //Constants
     def WUM_CREDS = 'wum_creds'
     def GITHUB_CREDS = 'github_creds'
     def DB_CREDS = 'db_creds'
-    //Test Endpoint
+    //Return Keys
     def TEST_ENDPOINT_KEY = "HttpURL"
+    def VPC_ID_KEY = "${STACK_NETWORK}-WSO2VPC"
     //Directories
     def DEPLOYMENT_DIR = "deployment"
     def CONF_HOME_DIR = "configs"
@@ -121,6 +123,14 @@ node(NODE_MASTER) {
                                        packerJson       : "${PACKER_JSON}",
                                        packerManifest   : "${PACKER_MANIFEST}",
                                        imageResources   : "${IMAGE_RESOURCES_LOC}"])
+        }
+
+        stage(Constants.Stages.DEPLOY_NETWORK) {
+             log.info " Create Network Resources "
+             NETWORK_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/network.yaml"
+             env.VPC_ID = deployAWSNetwork([cf        : "${NETWORK_CF}",
+                                            vpcId     : "${VPC_ID_KEY}",
+                                            stackName : "${STACK_NETWORK}"])
         }
 
         stage(Constants.Stages.DEPLOY_DEV) {
