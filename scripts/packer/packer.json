@@ -18,7 +18,7 @@
       "ssh_username": "ubuntu",
       "ami_name": "WSO2-CICD-UBUNTU-IMAGE-{{timestamp}}",
       "ami_groups": "all",
-      "ami_description": "WSO2-AWS-CI/CD-Pipeline AMI",
+      "ami_description": "WSO2 AWS CICD Pipeline AMI",
       "source_ami_filter": {
         "filters": {
           "name": "wso2-elk-1567419998",
