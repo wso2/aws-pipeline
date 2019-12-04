@@ -39,7 +39,6 @@ node(NODE_MASTER) {
     def DB_CREDS = 'db_creds'
     //Return Keys
     def TEST_ENDPOINT_KEY = "HttpURL"
-    def VPC_ID_KEY = "${STACK_NETWORK}-WSO2VPC"
     //Directories
     def DEPLOYMENT_DIR = "deployment"
     def CONF_HOME_DIR = "configs"
@@ -128,9 +127,8 @@ node(NODE_MASTER) {
         stage(Constants.Stages.DEPLOY_NETWORK) {
              log.info " Create Network Resources "
              NETWORK_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/network.yaml"
-             env.VPC_ID = deployAWSNetwork([cf        : "${NETWORK_CF}",
-                                            vpcId     : "${VPC_ID_KEY}",
-                                            stackName : "${STACK_NETWORK}"])
+             deployAWSNetwork([cf        : "${NETWORK_CF}",
+                               stackName : "${STACK_NETWORK}"])
         }
 
         stage(Constants.Stages.DEPLOY_DEV) {
@@ -150,8 +148,7 @@ node(NODE_MASTER) {
                        cf              : "${DEV_CF}",
                        testEndpoint    : "${TEST_ENDPOINT_KEY}",
                        environment     : "${DEV}",
-                       networkStackName: "${STACK_NETWORK}",
-                       vpcId           : "${env.VPC_ID}"])
+                       networkStackName: "${STACK_NETWORK}"])
         }
 
         stage(Constants.Stages.RUNNING_TESTS) {
@@ -194,8 +191,7 @@ node(NODE_MASTER) {
                        cf              : "${STAGING_CF}",
                        testEndpoint    : "${TEST_ENDPOINT_KEY}",
                        environment     : "${STAGING}",
-                       networkStackName: "${STACK_NETWORK}",
-                       vpcId           : "${env.VPC_ID}"])
+                       networkStackName: "${STACK_NETWORK}"])
         }
 
         stage(Constants.Stages.RUNNING_TESTS) {
