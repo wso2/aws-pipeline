@@ -149,7 +149,9 @@ node(NODE_MASTER) {
                        stackName       : "${STACK_DEV}",
                        cf              : "${DEV_CF}",
                        testEndpoint    : "${TEST_ENDPOINT_KEY}",
-                       environment     : "${DEV}"])
+                       environment     : "${DEV}",
+                       networkStackName: "${STACK_NETWORK}",
+                       vpcId           : "${env.VPC_ID}"])
         }
 
         stage(Constants.Stages.RUNNING_TESTS) {
@@ -191,7 +193,9 @@ node(NODE_MASTER) {
                        stackName       : "${STACK_STAGING}",
                        cf              : "${STAGING_CF}",
                        testEndpoint    : "${TEST_ENDPOINT_KEY}",
-                       environment     : "${STAGING}"])
+                       environment     : "${STAGING}",
+                       networkStackName: "${STACK_NETWORK}",
+                       vpcId           : "${env.VPC_ID}"])
         }
 
         stage(Constants.Stages.RUNNING_TESTS) {
@@ -233,7 +237,9 @@ node(NODE_MASTER) {
                        stackName       : "${STACK_PROD}",
                        cf              : "${PROD_CF}",
                        testEndpoint    : "${TEST_ENDPOINT_KEY}",
-                       environment     : "${PROD}"])
+                       environment     : "${PROD}",
+                       networkStackName: "${STACK_NETWORK}",
+                       vpcId           : "${env.VPC_ID}"])
         }
 
         stage(Constants.Stages.RUNNING_TESTS) {
