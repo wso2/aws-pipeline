@@ -126,7 +126,7 @@ node(NODE_MASTER) {
 
         stage(Constants.Stages.DEPLOY_NETWORK) {
              log.info " Create Network Resources "
-             NETWORK_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/network.yaml"
+             NETWORK_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/network/network.yaml"
              deployAWSNetwork([cf        : "${NETWORK_CF}",
                                stackName : "${STACK_NETWORK}"])
         }
