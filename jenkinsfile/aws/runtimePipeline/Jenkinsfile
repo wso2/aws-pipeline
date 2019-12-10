@@ -37,6 +37,7 @@ node(NODE_MASTER) {
     def WUM_CREDS = 'wum_creds'
     def GITHUB_CREDS = 'github_creds'
     def DB_CREDS = 'db_creds'
+    def BRANCH = '*/1.0.0'
     //Return Keys
     def TEST_ENDPOINT_KEY = "HttpURL"
     //Directories
@@ -70,18 +71,22 @@ node(NODE_MASTER) {
             env.REGION = getAvailabilityZone()
             cloneRepoToDir ([repoUrl    :"${env.GIT_REPO_ARTIFACTS}",
                              directory  :"${ARTIFACTS_DIR}",
-                             credID     : "${GITHUB_CREDS}" ])
+                             branch     :"${BRANCH}",
+                             credID     :"${GITHUB_CREDS}" ])
 
             cloneRepoToDir ([repoUrl    :"${GIT_REPO_RESOURCES}",
                              directory  :"${PIPELINE_RESOURCES_DIR}",
+                             branch     :"${BRANCH}",
                              credID     :"${GITHUB_CREDS}"])
 
             cloneRepoToDir ([repoUrl    :"${env.GIT_REPO_CF}",
                              directory  :"${DEPLOYMENT_DIR}",
+                             branch     :"${BRANCH}",
                              credID     :"${GITHUB_CREDS}"])
 
             cloneRepoToDir ([repoUrl    :"${GIT_REPO_PUPPET}",
                              directory  :"${PUPPET_CONF_DIR}",
+                             branch     :"${BRANCH}",
                              credID     :"${GITHUB_CREDS}"])
 
             if (!fileExists("${IMAGE_RESOURCES}")) {
