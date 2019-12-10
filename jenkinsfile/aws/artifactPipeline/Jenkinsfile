@@ -46,8 +46,6 @@ node(NODE_MASTER) {
     try {
         stage(Constants.Stages.CLONE_ARTIFACT_SOURCE) {
             log.info "Cloning artifact Source"
-            log.info "${env}"
-
             file = load ENV
             env.REGION = getAvailabilityZone()
             cloneRepoToDir ([repoUrl    :"${env.GIT_REPO_ARTIFACTS}",
@@ -69,7 +67,7 @@ node(NODE_MASTER) {
         stage(Constants.Stages.MOUNT_EFS) {
             log.info "Mounting EFS to /mnt/dev-efs"
             mountEFS([
-                 mountPoint : "${DEV_EFS_MOUNT}",
+                 mountPoint : "${EFS_MOUNT}",
                  efsId      : "${env.DEV_EFS_ID}",
                  region     : "${env.REGION}"
             ])
@@ -78,11 +76,11 @@ node(NODE_MASTER) {
         stage(Constants.Stages.COPY_ARTIFACTS) {
             log.info "Copying enviornment artifacts"
              copyArtifacts ([image_resources:"${ARTIFACTS_DIR_LOC}",
-                             mountPoint    :"${DEV_EFS_MOUNT}"])
+                             mountPoint    :"${EFS_MOUNT}"])
         }
 
         stage(Constants.Stages.UNMOUNT_EFS) {
-            unmountEFS([mountPoint : "${DEV_EFS_MOUNT}"])
+            unmountEFS([mountPoint : "${EFS_MOUNT}"])
         }
 
     } catch (exc) {
