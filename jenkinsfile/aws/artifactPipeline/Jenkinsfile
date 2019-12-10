@@ -73,7 +73,7 @@ node(NODE_MASTER) {
             ])
         }
 
-        stage(Constants.Stages.COPY ARTIFACTS) {
+        stage(Constants.Stages.COPY_ARTIFACTS) {
             log.info "Copying enviornment artifacts"
              copyArtifacts ([image_resources:"${ARTIFACTS_DIR_LOC}",
                              mountPoint    :"${DEV_EFS_MOUNT}"])
