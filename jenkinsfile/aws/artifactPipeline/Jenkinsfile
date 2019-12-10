@@ -1,0 +1,97 @@
+/*
+*  Copyright (c) 2019, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*
+*  WSO2 Inc. licenses this file to you under the Apache License,
+*  Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/
+
+@Library('wso2-jenkins-shared-lib')
+import org.wso2.util.Constants
+
+//Nodes
+def NODE_MASTER = "master"
+node(NODE_MASTER) {
+
+    def ENVIRONMENT = "${params.branch}"
+    def BRANCH = "*/${params.branch}"
+    //Directories
+    def DEPLOYMENT_DIR = "deployment"
+    def CONF_HOME_DIR = "configs"
+    def ARTIFACTS_SOURCE = "cicd-test-artifacts"
+
+    //Mount Points
+     def EFS_MOUNT = "/mnt/${ENVIRONMENT}-efs"
+     def ARTIFACT_CONF = "${WORKSPACE}/${ARTIFACTS_SOURCE}/buildArtifact.sh"
+
+    // Resource Locations
+    def ARTIFACTS_DIR = "artifacts"
+    def ARTIFACTS_DIR_LOC = "${WORKSPACE}/${ARTIFACTS_DIR}"
+
+    //Config Files
+    def ENV = '/home/jenkins/jenkins_env'
+
+    try {
+        stage(Constants.Stages.CLONE_ARTIFACT_SOURCE) {
+            log.info "Cloning artifact Source"
+            log.info "${env}"
+
+            file = load ENV
+            env.REGION = getAvailabilityZone()
+            cloneRepoToDir ([repoUrl    :"${env.GIT_REPO_ARTIFACTS}",
+                             directory  :"${ARTIFACTS_SOURCE}",
+                             branch     :"${BRANCH}",
+                             credID     :"${GITHUB_CREDS}" ])
+        }
+
+        stage(Constants.Stages.BUILD_ARTIFACTS) {
+            if (!fileExists("${ARTIFACTS_DIR}")) {
+                   sh "mkdir ARTIFACTS_DIR"
+            }
+            log.info "Build product artifacts"
+            buildArtifacts([artifactConf       : "${ARTIFACT_CONF}",
+                            artifactsLoc       : "${WORKSPACE}/${ARTIFACTS_SOURCE}",
+                            image_resources    : "${ARTIFACTS_DIR_LOC}"])
+        }
+
+        stage(Constants.Stages.MOUNT_EFS) {
+            log.info "Mounting EFS to /mnt/dev-efs"
+            mountEFS([
+                 mountPoint : "${DEV_EFS_MOUNT}",
+                 efsId      : "${env.DEV_EFS_ID}",
+                 region     : "${env.REGION}"
+            ])
+        }
+
+        stage(Constants.Stages.COPY ARTIFACTS) {
+            log.info "Copying enviornment artifacts"
+             copyArtifacts ([image_resources:"${ARTIFACTS_DIR_LOC}",
+                             mountPoint    :"${DEV_EFS_MOUNT}"])
+        }
+
+        stage(Constants.Stages.UNMOUNT_EFS) {
+            unmountEFS([mountPoint : "${DEV_EFS_MOUNT}"])
+        }
+
+    } catch (exc) {
+        log.err "Caught: ${exc}"
+        String recipient = env.Email
+        mail subject: "${env.JOB_NAME} (${env.BUILD_NUMBER}) build failed",
+                body: "${env.JOB_NAME} build ${env.BUILD_NUMBER} failed in Jenkins. Check console output at $BUILD_URL to view the results.",
+                to: recipient,
+                replyTo: recipient,
+                from: 'noreply@wso2cicd.com'
+        throw exc
+    }
+
+}
