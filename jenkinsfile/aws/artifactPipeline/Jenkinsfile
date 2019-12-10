@@ -56,7 +56,7 @@ node(NODE_MASTER) {
 
         stage(Constants.Stages.BUILD_ARTIFACTS) {
             if (!fileExists("${ARTIFACTS_DIR}")) {
-                   sh "mkdir ARTIFACTS_DIR"
+                   sh "mkdir $ARTIFACTS_DIR"
             }
             log.info "Build product artifacts"
             buildArtifacts([artifactConf       : "${ARTIFACT_CONF}",
