@@ -25,6 +25,8 @@ node(NODE_MASTER) {
 
     def ENVIRONMENT = "${params.branch}"
     def BRANCH = "*/${params.branch}"
+    def GITHUB_CREDS = "github_creds"
+
     //Directories
     def DEPLOYMENT_DIR = "deployment"
     def CONF_HOME_DIR = "configs"
