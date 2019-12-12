@@ -1,0 +1,190 @@
+/*
+*  Copyright (c) 2019, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*
+*  WSO2 Inc. licenses this file to you under the Apache License,
+*  Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/
+
+@Library('wso2-jenkins-shared-lib')
+import org.wso2.util.Constants
+
+//Nodes
+def NODE_MASTER = "master"
+node(NODE_MASTER) {
+    def PRODUCT = "${params.PRODUCT}"
+    def VERSION = "${params.VERSION}"
+    def REVISION = "${params.REVISION}"
+    def PROD = "Prod"
+    def STAGING = "Staging"
+    def DEV = "Dev"
+    //Stacks
+    def STACK_STAGING = "staging-stack"
+    def STACK_PROD = "prod-stack"
+    def STACK_DEV = "dev-stack"
+    def STACK_NETWORK = "network"
+    //Constants
+    def DB_CREDS = 'db_creds'
+    def GITHUB_CREDS = 'github_creds'
+    def BRANCH = '*/1.0.0'
+    //Return Keys
+    def TEST_ENDPOINT_KEY = "HttpURL"
+    //Config Files
+    def ENV = '/home/jenkins/jenkins_env'
+    def PROPERTY_FILE = '/home/jenkins/build.properties'
+    //Directories
+    def DEPLOYMENT_DIR = "deployment"
+
+    def REMOVE_LOGS = 'org.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn'
+
+    try {
+        stage(Constants.Stages.SETUP_ENV) {
+            log.info "Load Environment Variables"
+            file = load ENV
+            env.REGION = getAvailabilityZone()
+            cloneRepoToDir ([repoUrl    :"${env.GIT_REPO_CF}",
+                             directory  :"${DEPLOYMENT_DIR}",
+                             branch     :"${BRANCH}",
+                             credID     :"${GITHUB_CREDS}"])
+            def props = readProperties file: PROPERTY_FILE
+            env.IMAGE_ID = props["${REVISION}"]
+
+        }
+
+        stage(Constants.Stages.DEPLOY_DEV) {
+            log.info "Rollback in Development"
+            DEV_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/cf-dev.yaml"
+            env.TEST_ENDPOINT = deployAWS([wso2InstanceType: "${env.WSO2InstanceType}",
+                       product         : "${PRODUCT}",
+                       version         : "${VERSION}",
+                       keyPairName     : "${env.KeyPairName}",
+                       certName        : "${env.CertificateName}",
+                       dbCredID        : "${DB_CREDS}",
+                       dbType          : "${env.DBType}",
+                       amiID           : "${env.IMAGE_ID}",
+                       iamRole         : "${env.IAMRole}",
+                       region          : "${env.REGION}",
+                       stackName       : "${STACK_DEV}",
+                       cf              : "${DEV_CF}",
+                       testEndpoint    : "${TEST_ENDPOINT_KEY}",
+                       environment     : "${DEV}",
+                       networkStackName: "${STACK_NETWORK}"])
+        }
+
+        stage(Constants.Stages.RUNNING_TESTS) {
+            log.info "Running Test"
+            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
+            dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
+                executeTests "${TEST_SCRIPT}"
+            }
+        }
+
+         stage(Constants.Stages.APPROVE_STAGING) {
+            env.IS_APPROVED = false
+            timeout(time:3, unit:'DAYS') {
+                env.IS_APPROVED = input(
+                id: "APPROVE_TO_STAGING",
+                message: "Do you want to proceed to rollback in Staging?",
+                ok: "OK",
+                parameters:[booleanParam(defaultValue:false, name: 'Approve', description: 'Rollback Staging?')])
+                if (env.IS_APPROVED != 'true') {
+                    currentBuild.result = "ABORTED"
+                    echo "Approval to rollback in staging was Declined."
+                }
+            }
+         }
+
+        stage(Constants.Stages.DEPLOY_STAGING) {
+            log.info "Deploying in Staging"
+            STAGING_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/cf-staging.yaml"
+            env.TEST_ENDPOINT = deployAWS([wso2InstanceType: "${env.WSO2InstanceType}",
+                       product         : "${PRODUCT}",
+                       version         : "${VERSION}",
+                       keyPairName     : "${env.KeyPairName}",
+                       certName        : "${env.CertificateName}",
+                       dbCredID        : "${DB_CREDS}",
+                       dbType          : "${env.DBType}",
+                       amiID           : "${env.IMAGE_ID}",
+                       iamRole         : "${env.IAMRole}",
+                       region          : "${env.REGION}",
+                       stackName       : "${STACK_STAGING}",
+                       cf              : "${STAGING_CF}",
+                       testEndpoint    : "${TEST_ENDPOINT_KEY}",
+                       environment     : "${STAGING}",
+                       networkStackName: "${STACK_NETWORK}"])
+        }
+
+        stage(Constants.Stages.RUNNING_TESTS) {
+            log.info "Running Test"
+            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
+            dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
+                executeTests "${TEST_SCRIPT}"
+            }
+        }
+
+         stage(Constants.Stages.APPROVE_PRODUCTION) {
+            env.IS_APPROVED = false
+            timeout(time:3, unit:'DAYS') {
+                env.IS_APPROVED = input(
+                id: "APPROVE_TO_PRODUCTION",
+                message: "Do you want to proceed to rollback in Production?",
+                ok: "OK",
+                parameters:[booleanParam(defaultValue:false, name: 'Approve', description: 'Rollback Production?')])
+                if (env.IS_APPROVED != 'true') {
+                    currentBuild.result = "ABORTED"
+                    echo "Approval to rollback in production was Declined."
+                }
+            }
+         }
+
+        stage(Constants.Stages.DEPLOY_PRODUCTION) {
+            log.info "Deploying in Production"
+            PROD_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/cf.yaml"
+            env.TEST_ENDPOINT = deployAWS([wso2InstanceType: "${env.WSO2InstanceType}",
+                       product         : "${PRODUCT}",
+                       version         : "${VERSION}",
+                       keyPairName     : "${env.KeyPairName}",
+                       certName        : "${env.CertificateName}",
+                       dbCredID        : "${DB_CREDS}",
+                       dbType          : "${env.DBType}",
+                       amiID           : "${env.IMAGE_ID}",
+                       iamRole         : "${env.IAMRole}",
+                       region          : "${env.REGION}",
+                       stackName       : "${STACK_PROD}",
+                       cf              : "${PROD_CF}",
+                       testEndpoint    : "${TEST_ENDPOINT_KEY}",
+                       environment     : "${PROD}",
+                       networkStackName: "${STACK_NETWORK}",
+                       vpcId           : "${env.VPC_ID}"])
+        }
+
+        stage(Constants.Stages.RUNNING_TESTS) {
+            log.info " Running Test "
+            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
+            dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
+                executeTests "${TEST_SCRIPT}"
+            }
+        }
+
+    } catch (exc) {
+        log.err "Caught: ${exc}"
+        String recipient = env.Email
+        mail subject: "${env.JOB_NAME} (${env.BUILD_NUMBER}) build failed",
+                body: "${env.JOB_NAME} build ${env.BUILD_NUMBER} failed in Jenkins. Check console output at $BUILD_URL to view the results.",
+                to: recipient,
+                replyTo: recipient,
+                from: 'noreply@wso2cicd.com'
+        throw exc
+    }
+
+}
