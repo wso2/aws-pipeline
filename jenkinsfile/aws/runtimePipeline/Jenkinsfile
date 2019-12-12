@@ -259,7 +259,7 @@ node(NODE_MASTER) {
         stage('Constants.Stages.PERSIST_REVISIONS') {
             sh "echo Build-${env.BUILD_NUMBER}-on-${env.DATE} >> /home/jenkins/build.txt"
             sh "echo Build-${env.BUILD_NUMBER}-on-${env.DATE} = ${env.IMAGE_ID} >> /home/jenkins/build.properties"
-            log.info("Persist Successful Build Revisions"
+            log.info("Persist Successful Build Revisions")
         }
 
     } catch (exc) {
