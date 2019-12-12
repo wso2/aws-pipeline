@@ -38,6 +38,7 @@ node(NODE_MASTER) {
     def GITHUB_CREDS = 'github_creds'
     def DB_CREDS = 'db_creds'
     def BRANCH = '*/1.0.0'
+    def AMI_NAME = "WSO2-CICD-UBUNTU-IMAGE-${PRODUCT}-${VERSION}"
     //Return Keys
     def TEST_ENDPOINT_KEY = "HttpURL"
     //Directories
@@ -63,12 +64,15 @@ node(NODE_MASTER) {
     def GIT_REPO_RESOURCES = 'https://github.com/wso2/aws-pipeline'
     //mvn remove download logs
     def REMOVE_LOGS = 'org.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn'
+    def date = new Date()
+    def formatDate = date.format("dd/MM/yy HH:mm", TimeZone.getTimeZone('UTC'))
 
     try {
         stage(Constants.Stages.SETUP_ENV) {
             log.info "Setting up the Environment"
             file = load ENV
             env.REGION = getAvailabilityZone()
+            env.DATE = formatDate.toString()
             cloneRepoToDir ([repoUrl    :"${env.GIT_REPO_ARTIFACTS}",
                              directory  :"${ARTIFACTS_DIR}",
                              branch     :"${BRANCH}",
@@ -126,12 +130,13 @@ node(NODE_MASTER) {
                                        region           : "${REGION}",
                                        packerJson       : "${PACKER_JSON}",
                                        packerManifest   : "${PACKER_MANIFEST}",
+                                       amiName          : "${AMI_NAME}",
                                        imageResources   : "${IMAGE_RESOURCES_LOC}"])
         }
 
         stage(Constants.Stages.DEPLOY_NETWORK) {
              log.info " Create Network Resources "
-             NETWORK_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/network/network.yaml"
+             NETWORK_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/network/network.yaml"
              deployAWSNetwork([cf        : "${NETWORK_CF}",
                                stackName : "${STACK_NETWORK}"])
         }
@@ -250,6 +255,13 @@ node(NODE_MASTER) {
                 executeTests "${TEST_SCRIPT}"
             }
         }
+
+        stage('Constants.Stages.PERSIST_REVISIONS') {
+            sh "echo Build-${env.BUILD_NUMBER}-on-${env.DATE} >> /home/jenkins/build.txt"
+            sh "echo Build-${env.BUILD_NUMBER}-on-${env.DATE} = ${env.IMAGE_ID} >> /home/jenkins/build.properties"
+            log.info("Persist Successful Build Revisions"
+        }
+
     } catch (exc) {
         log.err "Caught: ${exc}"
         String recipient = env.Email
