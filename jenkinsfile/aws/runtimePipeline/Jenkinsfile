@@ -39,6 +39,9 @@ node(NODE_MASTER) {
     def DB_CREDS = 'db_creds'
     def BRANCH = '*/1.0.0'
     def AMI_NAME = "WSO2-CICD-UBUNTU-IMAGE-${PRODUCT}-${VERSION}"
+    def DEV_EFS_IDENTIFIER = "DEV_EFS_IP"
+    def STAGING_EFS_IDENTIFIER = "STAGING_EFS_IP"
+    def PROD_EFS_IDENTIFIER = "PROD_EFS_IP"
     //Return Keys
     def TEST_ENDPOINT_KEY = "HttpURL"
     //Directories
@@ -137,14 +140,15 @@ node(NODE_MASTER) {
         stage(Constants.Stages.DEPLOY_NETWORK) {
              log.info " Create Network Resources "
              NETWORK_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/network/network.yaml"
-             deployAWSNetwork([cf        : "${NETWORK_CF}",
-                               stackName : "${STACK_NETWORK}"])
+             deployAWSNetwork([cf               : "${NETWORK_CF}",
+                               TransitGatewayId : "${env.TransitGatewayId}",
+                               stackName        : "${STACK_NETWORK}"])
         }
 
         stage(Constants.Stages.DEPLOY_DEV) {
             log.info "Deploying to Development"
             DEV_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/cf-dev.yaml"
-            env.TEST_ENDPOINT = deployAWS([wso2InstanceType: "${env.WSO2InstanceType}",
+            outputs = deployAWS([wso2InstanceType: "${env.WSO2InstanceType}",
                        product         : "${PRODUCT}",
                        version         : "${VERSION}",
                        keyPairName     : "${env.KeyPairName}",
@@ -156,17 +160,22 @@ node(NODE_MASTER) {
                        region          : "${env.REGION}",
                        stackName       : "${STACK_DEV}",
                        cf              : "${DEV_CF}",
-                       testEndpoint    : "${TEST_ENDPOINT_KEY}",
                        environment     : "${DEV}",
                        networkStackName: "${STACK_NETWORK}"])
         }
 
         stage(Constants.Stages.RUNNING_TESTS) {
             log.info "Running Test"
-            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
+            def TEST_SCRIPT = "mvn  test -Dendpoint=${outputs.HttpURL} -D{$REMOVE_LOGS}"
             dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
                 executeTests "${TEST_SCRIPT}"
             }
+        }
+
+        stage(Constants.Stages.WRITE_EFS_IP) {
+            log.info "Store EFS IP"
+            writeEFSIP([efsIdentifier: "${DEV_EFS_IDENTIFIER}",
+                        MountTargetIP: "${outputs.MountTargetIP}"])
         }
 
          stage(Constants.Stages.APPROVE_STAGING) {
@@ -187,7 +196,7 @@ node(NODE_MASTER) {
         stage(Constants.Stages.DEPLOY_STAGING) {
             log.info "Deploying to Staging"
             STAGING_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/cf-staging.yaml"
-            env.TEST_ENDPOINT = deployAWS([wso2InstanceType: "${env.WSO2InstanceType}",
+            outputs = deployAWS([wso2InstanceType: "${env.WSO2InstanceType}",
                        product         : "${PRODUCT}",
                        version         : "${VERSION}",
                        keyPairName     : "${env.KeyPairName}",
@@ -199,17 +208,22 @@ node(NODE_MASTER) {
                        region          : "${env.REGION}",
                        stackName       : "${STACK_STAGING}",
                        cf              : "${STAGING_CF}",
-                       testEndpoint    : "${TEST_ENDPOINT_KEY}",
                        environment     : "${STAGING}",
                        networkStackName: "${STACK_NETWORK}"])
         }
 
         stage(Constants.Stages.RUNNING_TESTS) {
             log.info "Running Test"
-            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
+            def TEST_SCRIPT = "mvn  test -Dendpoint=${outputs.HttpURL} -D{$REMOVE_LOGS}"
             dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
                 executeTests "${TEST_SCRIPT}"
             }
+        }
+
+        stage(Constants.Stages.WRITE_EFS_IP) {
+            log.info "Store EFS IP"
+            writeEFSIP([efsIdentifier: "${STAGING_EFS_IDENTIFIER}",
+                        MountTargetIP: "${outputs.MountTargetIP}"])
         }
 
          stage(Constants.Stages.APPROVE_PRODUCTION) {
@@ -230,30 +244,34 @@ node(NODE_MASTER) {
         stage(Constants.Stages.DEPLOY_PRODUCTION) {
             log.info "Deploying to Production"
             PROD_CF = "${WORKSPACE}/${DEPLOYMENT_DIR}/${PRODUCT}/${env.DeploymentPattern}/cf.yaml"
-            env.TEST_ENDPOINT = deployAWS([wso2InstanceType: "${env.WSO2InstanceType}",
-                       product         : "${PRODUCT}",
-                       version         : "${VERSION}",
-                       keyPairName     : "${env.KeyPairName}",
-                       certName        : "${env.CertificateName}",
-                       dbCredID        : "${DB_CREDS}",
-                       dbType          : "${env.DBType}",
-                       amiID           : "${env.IMAGE_ID}",
-                       iamRole         : "${env.IAMRole}",
-                       region          : "${env.REGION}",
-                       stackName       : "${STACK_PROD}",
-                       cf              : "${PROD_CF}",
-                       testEndpoint    : "${TEST_ENDPOINT_KEY}",
-                       environment     : "${PROD}",
-                       networkStackName: "${STACK_NETWORK}",
-                       vpcId           : "${env.VPC_ID}"])
+            outputs = deployAWSProd([wso2InstanceType: "${env.WSO2InstanceType}",
+                                     product         : "${PRODUCT}",
+                                     version         : "${VERSION}",
+                                     keyPairName     : "${env.KeyPairName}",
+                                     certName        : "${env.CertificateName}",
+                                     dbCredID        : "${DB_CREDS}",
+                                     dbType          : "${env.DBType}",
+                                     amiID           : "${env.IMAGE_ID}",
+                                     iamRole         : "${env.IAMRole}",
+                                     region          : "${env.REGION}",
+                                     stackName       : "${STACK_PROD}",
+                                     cf              : "${PROD_CF}",
+                                     environment     : "${PROD}",
+                                     TransitGatewayId: "${env.TransitGatewayId}"])
         }
 
         stage(Constants.Stages.RUNNING_TESTS) {
             log.info " Running Test "
-            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
+            def TEST_SCRIPT = "mvn  test -Dendpoint=${outputs.HttpURL} -D{$REMOVE_LOGS}"
             dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
                 executeTests "${TEST_SCRIPT}"
             }
+        }
+
+        stage(Constants.Stages.WRITE_EFS_IP) {
+            log.info "Store EFS IP"
+            writeEFSIP([efsIdentifier: "${PROD_EFS_IDENTIFIER}",
+                        MountTargetIP: "${outputs.MountTargetIP}"])
         }
 
         stage('Constants.Stages.PERSIST_REVISIONS') {
