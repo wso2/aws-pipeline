@@ -25,12 +25,20 @@ node(NODE_MASTER) {
 
     def ENVIRONMENT = "${params.branch}"
     def BRANCH = "*/${params.branch}"
+    def PRODUCT = "${params.product}"
+
+    //Constants
+    def DEV_EFS_IDENTIFIER = "DEV_EFS_IP"
+    def STAGING_EFS_IDENTIFIER = "STAGING_EFS_IP"
+    def PROD_EFS_IDENTIFIER = "PROD_EFS_IP"
+    def EFS_IDENTIFIER = "PROD_EFS_IP"
     def GITHUB_CREDS = "github_creds"
 
     //Directories
     def DEPLOYMENT_DIR = "deployment"
     def CONF_HOME_DIR = "configs"
     def ARTIFACTS_SOURCE = "cicd-test-artifacts"
+    def DEPLOYMENT_DIR = "carbonapps"
 
     //Mount Points
      def EFS_MOUNT = "/mnt/${ENVIRONMENT}-efs"
@@ -45,6 +53,16 @@ node(NODE_MASTER) {
 
     try {
         stage(Constants.Stages.CLONE_ARTIFACT_SOURCE) {
+            if (PRODUCT.equals("wso2am")) {
+                DEPLOYMENT_DIR = "webapps"
+            }
+
+            if (ENVIRONMENT.equals("staging")) {
+                EFS_IDENTIFIER = ${STAGING_EFS_IDENTIFIER}
+            } else if (ENVIRONMENT.equals("dev") {
+                EFS_IDENTIFIER = ${DEV_EFS_IDENTIFIER}
+            }
+
             log.info "Cloning artifact Source"
             file = load ENV
             env.REGION = getAvailabilityZone()
@@ -65,18 +83,19 @@ node(NODE_MASTER) {
         }
 
         stage(Constants.Stages.MOUNT_EFS) {
-            log.info "Mounting EFS to /mnt/dev-efs"
+            log.info "Mounting EFS"
             mountEFS([
                  mountPoint : "${EFS_MOUNT}",
-                 efsId      : "${env.DEV_EFS_ID}",
+                 efsIp      : "${EFS_IDENTIFIER}",
                  region     : "${env.REGION}"
             ])
         }
 
         stage(Constants.Stages.COPY_ARTIFACTS) {
-            log.info "Copying enviornment artifacts"
+            log.info "Copying environment artifacts"
              copyArtifacts ([image_resources:"${ARTIFACTS_DIR_LOC}",
-                             mountPoint    :"${EFS_MOUNT}"])
+                             mountDir       :"${DEPLOYMENT_DIR}","
+                             mountPoint     :"${EFS_MOUNT}"])
         }
 
         stage(Constants.Stages.UNMOUNT_EFS) {
