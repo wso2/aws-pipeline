@@ -23,9 +23,9 @@ import org.wso2.util.Constants
 def NODE_MASTER = "master"
 node(NODE_MASTER) {
 
-    def ENVIRONMENT = "${params.branch}"
-    def BRANCH = "*/${params.branch}"
-    def PRODUCT = "${params.product}"
+    def ENVIRONMENT = "${params.BRANCH}"
+    def BRANCH = "*/${params.BRANCH}"
+    def PRODUCT = "${params.PRODUCT}"
 
     //Constants
     def DEV_EFS_IDENTIFIER = "DEV_EFS_IP"
