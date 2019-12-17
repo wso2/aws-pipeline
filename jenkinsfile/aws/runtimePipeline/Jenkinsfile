@@ -64,7 +64,7 @@ node(NODE_MASTER) {
     def PACKER_MANIFEST = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/manifest.json"
     def PACKER_JSON = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/packer.json"
     //repos
-    def GIT_REPO_RESOURCES = 'https://github.com/wso2/aws-pipeline'
+    def GIT_REPO_RESOURCES = 'https://github.com/shafanaS/aws-pipeline'
     //mvn remove download logs
     def REMOVE_LOGS = 'org.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn'
     def date = new Date()
