@@ -31,9 +31,6 @@ echo "Copying $product-$version ..."
 cp /tmp/$product-$version.zip /home/wso2user/
 cp /tmp/OpenJDK8U-jdk_8u222_linux_x64.tar.gz /opt
 
-mkdir /home/wso2user/endpointCars
-cp /tmp/*.car /home/wso2user/endpointCars
-
 mkdir /usr/local/bin/bashScripts
 cp -r /tmp/util/bashScripts/$product/$version/$deploymentPattern/$dbType/ /usr/local/bin/bashScripts/
 
