@@ -51,16 +51,6 @@ node(NODE_MASTER) {
 
     try {
         stage(Constants.Stages.CLONE_ARTIFACT_SOURCE) {
-            if (PRODUCT.equals("wso2am")) {
-                ARTIFACT_DEPLOYMENT_DIR = "webapps"
-            }
-
-            if (ENVIRONMENT.equals("staging")) {
-                EFS_IDENTIFIER = ${STAGING_EFS_IDENTIFIER}
-            } else if (ENVIRONMENT.equals("dev")) {
-                EFS_IDENTIFIER = ${DEV_EFS_IDENTIFIER}
-            }
-
             log.info "Cloning artifact Source"
             file = load ENV
             env.REGION = getAvailabilityZone()
@@ -81,6 +71,11 @@ node(NODE_MASTER) {
         }
 
         stage(Constants.Stages.MOUNT_EFS) {
+            if (ENVIRONMENT.equals("staging")) {
+                EFS_IDENTIFIER = ${STAGING_EFS_IDENTIFIER}
+            } else if (ENVIRONMENT.equals("dev")) {
+                EFS_IDENTIFIER = ${DEV_EFS_IDENTIFIER}
+            }
             log.info "Mounting EFS"
             mountEFS([
                  mountPoint : "${EFS_MOUNT}",
@@ -90,6 +85,9 @@ node(NODE_MASTER) {
         }
 
         stage(Constants.Stages.COPY_ARTIFACTS) {
+            if (PRODUCT.equals("wso2am")) {
+                ARTIFACT_DEPLOYMENT_DIR = "webapps"
+            }
             log.info "Copying environment artifacts"
              copyArtifacts ([image_resources:"${ARTIFACTS_DIR_LOC}",
                              mountDir       :"${ARTIFACT_DEPLOYMENT_DIR}",
