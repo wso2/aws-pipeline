@@ -35,10 +35,8 @@ node(NODE_MASTER) {
     def GITHUB_CREDS = "github_creds"
 
     //Directories
-    def DEPLOYMENT_DIR = "deployment"
-    def CONF_HOME_DIR = "configs"
     def ARTIFACTS_SOURCE = "cicd-test-artifacts"
-    def DEPLOYMENT_DIR = "carbonapps"
+    def ARTIFACT_DEPLOYMENT_DIR = "carbonapps"
 
     //Mount Points
      def EFS_MOUNT = "/mnt/${ENVIRONMENT}-efs"
@@ -54,12 +52,12 @@ node(NODE_MASTER) {
     try {
         stage(Constants.Stages.CLONE_ARTIFACT_SOURCE) {
             if (PRODUCT.equals("wso2am")) {
-                DEPLOYMENT_DIR = "webapps"
+                ARTIFACT_DEPLOYMENT_DIR = "webapps"
             }
 
             if (ENVIRONMENT.equals("staging")) {
                 EFS_IDENTIFIER = ${STAGING_EFS_IDENTIFIER}
-            } else if (ENVIRONMENT.equals("dev") {
+            } else if (ENVIRONMENT.equals("dev")) {
                 EFS_IDENTIFIER = ${DEV_EFS_IDENTIFIER}
             }
 
@@ -94,7 +92,7 @@ node(NODE_MASTER) {
         stage(Constants.Stages.COPY_ARTIFACTS) {
             log.info "Copying environment artifacts"
              copyArtifacts ([image_resources:"${ARTIFACTS_DIR_LOC}",
-                             mountDir       :"${DEPLOYMENT_DIR}","
+                             mountDir       :"${ARTIFACT_DEPLOYMENT_DIR}","
                              mountPoint     :"${EFS_MOUNT}"])
         }
 
