@@ -103,14 +103,6 @@ node(NODE_MASTER) {
             copy([src: "${PACKER_RESOURCES}/*", dest: "${IMAGE_RESOURCES_LOC}"])
         }
 
-        stage(Constants.Stages.BUILD_ARTIFACTS) {
-                    log.info "Build product artifacts"
-                    buildArtifacts([artifactConf       : "${ARTIFACT_CONF}",
-                                    artifactsLoc       : "${WORKSPACE}/${ARTIFACTS_DIR}",
-                                    image_resources    : "${IMAGE_RESOURCES_LOC}"])
-                }
-
-
         stage(Constants.Stages.BUILD_PACK) {
             log.info "Generate Pack with configs"
             applyConfig([product            : "${PRODUCT}",
