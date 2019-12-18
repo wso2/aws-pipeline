@@ -81,14 +81,6 @@ node(NODE_MASTER) {
                        networkStackName: "${STACK_NETWORK}"])
         }
 
-        stage(Constants.Stages.RUNNING_TESTS) {
-            log.info "Running Test"
-            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
-            dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
-                executeTests "${TEST_SCRIPT}"
-            }
-        }
-
          stage(Constants.Stages.APPROVE_STAGING) {
             env.IS_APPROVED = false
             timeout(time:3, unit:'DAYS') {
@@ -122,14 +114,6 @@ node(NODE_MASTER) {
                        testEndpoint    : "${TEST_ENDPOINT_KEY}",
                        environment     : "${STAGING}",
                        networkStackName: "${STACK_NETWORK}"])
-        }
-
-        stage(Constants.Stages.RUNNING_TESTS) {
-            log.info "Running Test"
-            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
-            dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
-                executeTests "${TEST_SCRIPT}"
-            }
         }
 
          stage(Constants.Stages.APPROVE_PRODUCTION) {
@@ -166,14 +150,6 @@ node(NODE_MASTER) {
                        environment     : "${PROD}",
                        networkStackName: "${STACK_NETWORK}",
                        vpcId           : "${env.VPC_ID}"])
-        }
-
-        stage(Constants.Stages.RUNNING_TESTS) {
-            log.info " Running Test "
-            def TEST_SCRIPT = "mvn  test -Dendpoint=${TEST_ENDPOINT} -D{$REMOVE_LOGS}"
-            dir("${ARTIFACTS_DIR}/tests/${PRODUCT}") {
-                executeTests "${TEST_SCRIPT}"
-            }
         }
 
     } catch (exc) {
