@@ -29,9 +29,9 @@ node(NODE_MASTER) {
     def STAGING = "Staging"
     def DEV = "Dev"
     //Stacks
-    def STACK_STAGING = "staging-stack"
-    def STACK_PROD = "prod-stack"
-    def STACK_DEV = "dev-stack"
+    def STACK_STAGING = "staging"
+    def STACK_PROD = "prod"
+    def STACK_DEV = "dev"
     def STACK_NETWORK = "network"
     //Constants
     def WUM_CREDS = 'wum_creds'
@@ -68,7 +68,7 @@ node(NODE_MASTER) {
     //mvn remove download logs
     def REMOVE_LOGS = 'org.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn'
     def date = new Date()
-    def formatDate = date.format("dd/MM/yy HH:mm", TimeZone.getTimeZone('UTC'))
+    def formatDate = date.format("ddMMyyHHmm", TimeZone.getTimeZone('UTC'))
 
     try {
         stage(Constants.Stages.SETUP_ENV) {
@@ -267,8 +267,8 @@ node(NODE_MASTER) {
         }
 
         stage('Constants.Stages.PERSIST_REVISIONS') {
-            sh "echo Build${env.BUILD_NUMBER} >> /home/jenkins/build.txt"
-            sh "echo Build${env.BUILD_NUMBER} = ${env.IMAGE_ID} >> /home/jenkins/build.properties"
+            sh "echo Build${env.BUILD_NUMBER}_on_${env.DATE} >> /home/jenkins/build.txt"
+            sh "echo Build${env.BUILD_NUMBER}_on_${env.DATE} = ${env.IMAGE_ID} >> /home/jenkins/build.properties"
             log.info("Persist Successful Build Revisions")
         }
 
