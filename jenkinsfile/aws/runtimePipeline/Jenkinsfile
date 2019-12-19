@@ -37,7 +37,7 @@ node(NODE_MASTER) {
     def WUM_CREDS = 'wum_creds'
     def GITHUB_CREDS = 'github_creds'
     def DB_CREDS = 'db_creds'
-    def BRANCH = '*/1.0.0'
+    def BRANCH = '*/master'
     def AMI_NAME = "WSO2-CICD-UBUNTU-IMAGE-${PRODUCT}-${VERSION}"
     def DEV_EFS_IDENTIFIER = "DEV_EFS_IP"
     def STAGING_EFS_IDENTIFIER = "STAGING_EFS_IP"
@@ -64,7 +64,7 @@ node(NODE_MASTER) {
     def PACKER_MANIFEST = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/manifest.json"
     def PACKER_JSON = "${WORKSPACE}/${PIPELINE_RESOURCES_DIR}/scripts/packer/packer.json"
     //repos
-    def GIT_REPO_RESOURCES = 'https://github.com/shafanaS/aws-pipeline'
+    def GIT_REPO_RESOURCES = 'https://github.com/wso2/aws-pipeline'
     //mvn remove download logs
     def REMOVE_LOGS = 'org.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn'
     def date = new Date()
