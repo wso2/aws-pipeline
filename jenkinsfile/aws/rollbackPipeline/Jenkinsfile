@@ -31,7 +31,7 @@ node(NODE_MASTER) {
     //Constants
     def DB_CREDS = 'db_creds'
     def GITHUB_CREDS = 'github_creds'
-    def BRANCH = '*/1.0.0'
+    def BRANCH = '*/master'
     //Return Keys
     def TEST_ENDPOINT_KEY = "HttpURL"
     //Config Files
