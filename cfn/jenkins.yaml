@@ -197,9 +197,22 @@ Parameters:
     Description: A valid email address to receive notifications on pipeline (optional)
 Resources:
   # networking configurations
+  WSO2JENKINSVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+  WSO2JenkinsSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref WSO2JENKINSVPC
+      CidrBlock: 10.0.254.0/24
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
   WSO2JenkinsPublicInternetGateway:
     Type: 'AWS::EC2::InternetGateway'
-
   WSO2JenkinsPublicRouteTable:
     Type: 'AWS::EC2::RouteTable'
     Properties:
@@ -217,12 +230,55 @@ Resources:
       GatewayId: !Ref WSO2JenkinsPublicInternetGateway
       DestinationCidrBlock: 0.0.0.0/0
     DependsOn: WSO2JenkinsVPCInternetGatewayAttachment
-
   WSO2JenkinsVPCInternetGatewayAttachment:
     Type: 'AWS::EC2::VPCGatewayAttachment'
     Properties:
       InternetGatewayId: !Ref WSO2JenkinsPublicInternetGateway
       VpcId: !Ref WSO2JENKINSVPC
+  WSO2TransitGateway:
+    Type: "AWS::EC2::TransitGateway"
+    Properties:
+      AutoAcceptSharedAttachments: enable
+      DefaultRouteTableAssociation: enable
+      DefaultRouteTablePropagation: enable
+      Description: WSO2 Transit Gateway
+      DnsSupport: disable
+      VpnEcmpSupport: enable
+      Tags:
+        - Key: Name
+          Value: WSO2 Transit Gateway
+  WSO2JenkinsTransitGatewayAttachment:
+    Type: "AWS::EC2::TransitGatewayAttachment"
+    Properties:
+      SubnetIds:
+        - !Ref WSO2JenkinsSubnet1
+      Tags:
+        - Key: Name
+          Value: WSO2 Transit Gateway
+      TransitGatewayId: !Ref WSO2TransitGateway
+      VpcId: !Ref WSO2JENKINSVPC
+    DependsOn: WSO2JenkinsInstance
+  WSO2TransitGatewayRoute:
+     Type: 'AWS::EC2::Route'
+     Properties:
+       RouteTableId: !Ref WSO2JenkinsPublicRouteTable
+       TransitGatewayId: !Ref WSO2TransitGateway
+       DestinationCidrBlock: 10.1.0.0/16
+     DependsOn: WSO2JenkinsTransitGatewayAttachment
+  WSO2JenkinsSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref WSO2JENKINSVPC
+      GroupDescription: WSO2 Jenkins node Security Group
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
   WSO2JenkinsInstance:
     Type: 'AWS::EC2::Instance'
     CreationPolicy:
@@ -273,65 +329,40 @@ Resources:
           Content-Disposition: attachment; filename="userdata.txt"
 
           #!/bin/bash
+          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
           export PATH=~/.local/bin:$PATH
-          sed -i "s|VAL1|${ArtifactRepoUrl}|g" /home/jenkins/jenkins_env
-          sed -i "s|VAL2|${CloudFormationRepoUrl}|g" /home/jenkins/jenkins_env
-          sed -i "s|VAL3|${ConfigurationRepoUrl}|g" /home/jenkins/jenkins_env
-          sed -i "s/VAL4/${KeyPairName}/g" /home/jenkins/jenkins_env
-          sed -i "s/VAL5/${WSO2InstanceType}/g" /home/jenkins/jenkins_env
-          sed -i "s/VAL6/${CertificateName}/g" /home/jenkins/jenkins_env
-          sed -i "s/VAL7/${DBType}/g" /home/jenkins/jenkins_env
-          sed -i "s/VAL8/${ProductName}/g" /home/jenkins/jenkins_env
-          sed -i "s/VAL9/${DeploymentPattern}/g" /home/jenkins/jenkins_env
-          sed -i "s/VAL0/${Email}/g" /home/jenkins/jenkins_env
-          sed -i "s/VALX/${IAMRole}/g" /home/jenkins/jenkins_env
+          sed -i "s|.*GIT_REPO_ARTIFACTS.*|env.GIT_REPO_ARTIFACTS=\'${ArtifactRepoUrl}\'|g" /home/jenkins/jenkins_env
+          sed -i "s|.*GIT_REPO_CF.*|env.GIT_REPO_CF=\'${CloudFormationRepoUrl}\'|g" /home/jenkins/jenkins_env
+          sed -i "s|.*GIT_REPO_PUPPET.*|env.GIT_REPO_PUPPET=\'${ConfigurationRepoUrl}\'|g" /home/jenkins/jenkins_env
+          sed -i "s/.*KeyPairName.*/env.KeyPairName=\'${KeyPairName}\'/g" /home/jenkins/jenkins_env
+          sed -i "s/.*WSO2InstanceType.*/env.WSO2InstanceType=\'${WSO2InstanceType}\'/g" /home/jenkins/jenkins_env
+          sed -i "s/.*CertificateName.*/env.CertificateName=\'${CertificateName}\'/g" /home/jenkins/jenkins_env
+          sed -i "s/.*DBType.*/env.DBType=\'${DBType}\'/g" /home/jenkins/jenkins_env
+          sed -i "s/.*ProductName.*/env.ProductName=\'${ProductName}\'/g" /home/jenkins/jenkins_env
+          sed -i "s/.*DeploymentPattern.*/env.DeploymentPattern=\'${DeploymentPattern}\'/g" /home/jenkins/jenkins_env
+          sed -i "s/.*Email.*/env.Email=\'${Email}\'/g" /home/jenkins/jenkins_env
+          sed -i "s/.*IAMRole.*/env.IAMRole=\'${IAMRole}\'/g" /home/jenkins/jenkins_env
+          sed -i "s/.*TransitGatewayId.*/env.TransitGatewayId=\'${WSO2TransitGateway}\'/g" /home/jenkins/jenkins_env
 
           export publichostname=$(ec2metadata --public-hostname)
-          sed -i "s/VAL/$publichostname/g" /var/lib/jenkins/jenkins.model.JenkinsLocationConfiguration.xml
+          sed -i "s/<jenkinsUrl>.*:8080/<\/jenkinsUrl>/<jenkinsUrl>$publichostname:8080<\/jenkinsUrl>/g" /var/lib/jenkins/jenkins.model.JenkinsLocationConfiguration.xml
           service jenkins start
 
-          export jenkinshookurl=http://$publichostname:8080/github-webhook/
+          export jenkinshookurl=http://admin:${JenkinsPassword}@$publichostname:8080/generic-webhook-trigger/invoke
           export githubhookurl=https://api.github.com/repos/${GitHubUsername}/${RepositoryName}/hooks
           sleep 120
           export JENKINS_CRUMB=$(curl -s 'http://admin:admin@localhost:8080/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)')
-          curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"wum_creds","username":"${WUMUsername}","password": "${WUMPassword}","description": "WUM Credentials","$class": "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"}}' -v >> /home/jenkins/text.txt
-          curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"github_creds","username":"${GitHubUsername}","password": "${GitHubPassword}","description": "Github Credentials","$class": "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"}}' -v >> /home/jenkins/text.txt
-          curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"db_creds","username":"${DBUsername}","password": "${DBPassword}","description": "Databse Credentials","$class": "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"}}' -v >> /home/jenkins/text.txt
+          curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"wum_creds","username":"${WUMUsername}","password": "${WUMPassword}","description": "WUM Credentials","$class": "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"}}' -v
+          curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"github_creds","username":"${GitHubUsername}","password": "${GitHubPassword}","description": "Github Credentials","$class": "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"}}' -v
+          curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"db_creds","username":"${DBUsername}","password": "${DBPassword}","description": "Databse Credentials","$class": "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"}}' -v
           echo $JENKINS_CRUMB >> /home/jenkins/log.txt
-          bash /home/jenkins/webhook/create_webhook.sh ${GitHubUsername} ${GitHubPassword} $githubhookurl $jenkinshookurl >> /home/jenkins/text.txt
+          bash /home/jenkins/webhook/create_webhook.sh ${GitHubUsername} ${GitHubPassword} $githubhookurl $jenkinshookurl
           sleep 120
-          bash /var/lib/jenkins/update_password.sh ${JenkinsPassword} >> /home/jenkins/password.log
+          bash /var/lib/jenkins/update_password.sh ${JenkinsPassword}
           service jenkins restart
           /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2JenkinsInstance --region ${AWS::Region}
-  WSO2JenkinsSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      VpcId: !Ref WSO2JENKINSVPC
-      GroupDescription: WSO2 Jenkins node Security Group
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
-          CidrIp: 0.0.0.0/0
-
-  WSO2JENKINSVPC:
-    Type: 'AWS::EC2::VPC'
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-  WSO2JenkinsSubnet1:
-    Type: 'AWS::EC2::Subnet'
-    Properties:
-      VpcId: !Ref WSO2JENKINSVPC
-      CidrBlock: 10.0.254.0/24
-      AvailabilityZone: !Select
-        - '0'
-        - !GetAZs ''
+    DependsOn:
+      - WSO2TransitGateway
 Outputs:
   JenkinsConsoleURL:
     Value: !Sub 'http://${WSO2JenkinsInstance.PublicDnsName}:8080/blue/pipelines'
@@ -339,62 +370,26 @@ Outputs:
 Mappings:
   WSO2UbuntuAMIRegionMap:
     us-east-1:
-      wso2ei: ami-006c421fb853bf71f
-      wso2is: ami-0c4159528068e8ab0
-      wso2am: ami-02aac3615822dbddd
+      wso2ei: ami-04d27706b25b47e3d
+      wso2is: ami-0bf95d5de5c854738
+      wso2am: ami-0fafd9245f636aa3c
     us-east-2:
-      wso2ei: ami-0a014945072471dea
-      wso2is: ami-06d21fca28cd57c6d
-      wso2am: ami-0d56d69645c529894
+      wso2ei: ami-0d5e71a25e8d6f93d
+      wso2is: ami-0eb3428fe7a595443
+      wso2am: ami-02274b57181300fe0
     us-west-1:
-      wso2ei: ami-0f0b65de0d8519349
-      wso2is: ami-05c18353016e25dda
-      wso2am: ami-071caa9c6506096b9
+      wso2ei: ami-011dd26e9315d470e
+      wso2is: ami-0acef5f11d6ca987e
+      wso2am: ami-0f910f7b2b47f66bf
     us-west-2:
-      wso2ei: ami-0620bf520a1ea4784
-      wso2is: ami-0e5ce149a2a7949c3
-      wso2am: ami-0c1a16413b61d6459
-    ap-south-1:
-      wso2ei: ami-0a977053b76e37fa3
-      wso2is: ami-0ec77e9bf3ed64b8f
-      wso2am: ami-0e7ddbaa21efa796a
-    ap-northeast-1:
-      wso2ei: ami-0a87abd7591a1fe5c
-      wso2is: ami-0c2114d43c3e60278
-      wso2am: ami-0fe54148265bc4fc8
-    ap-northeast-2:
-      wso2ei: ami-087fab1cb573bd591
-      wso2is: ami-007f701a6f3d87dd7
-      wso2am: ami-0c178a7190a284cd4
-    ap-southeast-1:
-      wso2ei: ami-0805954a78decc6e9
-      wso2is: ami-0e0e966bfbc7171f4
-      wso2am: ami-06aaf1bd99069f7ca
+      wso2ei: ami-0528996aa0cd1feca
+      wso2is: ami-07ea470d4c2069685
+      wso2am: ami-09151a32a7ce7f298
     ap-southeast-2:
-      wso2ei: ami-0c665e424de87ae44
-      wso2is: ami-0eac7d08410ef048e
-      wso2am: ami-047356573a1ab0723
-    ca-central-1:
-      wso2ei: ami-0c001130ca85cc8a3
-      wso2is: ami-04f2706244e9af7ae
-      wso2am: ami-0ae8648aa11b0f726
-    eu-central-1:
-      wso2ei: ami-00bdbea580b761bd6
-      wso2is: ami-0d617f4e9df2d031e
-      wso2am: ami-083ad969a4f7d358b
+      wso2ei: ami-0c38de9c55e19b865
+      wso2is: ami-01cb78fd11b81b16e
+      wso2am: ami-0ea08bf488eaf9b84
     eu-west-1:
-      wso2ei: ami-058cdddf85daabc8c
-      wso2is: ami-0d141793c2494f362
-      wso2am: ami-0b5b9325cf4beee5c
-    eu-west-2:
-      wso2ei: ami-086da18d7cece0f1b
-      wso2is: ami-080d8dc4ba71eab92
-      wso2am: ami-0207d76a0841bb0c6
-    eu-west-3:
-      wso2ei: ami-0a3489ad9ad8273f9
-      wso2is: ami-0988c1970eeec51f2
-      wso2am: ami-0f7da703916d54017
-    sa-east-1:
-      wso2ei: ami-095993244f2ad96de
-      wso2is: ami-077e6f1918cb74473
-      wso2am: ami-0958afb56a645d72b
+      wso2ei: ami-02b140850902d5328
+      wso2is: ami-06405834a1c13ce97
+      wso2am: ami-058dba9473972cc61
