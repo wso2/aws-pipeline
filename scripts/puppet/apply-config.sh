@@ -45,10 +45,11 @@ MODULE_PATH="${PUPPET_CONF_LOC}/modules"
 ZIP_OUTPUT_LOCATION=${ZIP_OUTPUT_LOC}
 DEPLOYMENT_PATTERN=${DEPLOYMENT_PATTERN}
 PACK_DIRECTORY=${DEPLOYMENT_PATTERN}
-WUM_UPDATE=true
+VALID_SUBSCRIPTION=true
 WUM_USER=${WUM_USERNAME}
 WUM_PASSWORD=${WUM_PASSWORD}
 WUM_PRODUCT_HOME="${WUM_HOME}"
+WSO2_UPDATE=`wso2update_linux`
 WUM=`which wum`
 CP=`which cp`
 MV=`which mv`
@@ -77,15 +78,6 @@ else
     fi
 fi
 
-#init WUM
-if [ -z  "$WUM_USER" ]; then
-    WUM_UPDATE=false
-else
-    ${WUM} init -u ${WUM_USER} -p ${WUM_PASSWORD} -v &>> wum.log
-    if [ $? -eq 1 ] ; then
-        exit ${FAILED_WUM_INIT}
-    fi
-fi
 
 if [ -d "${WORKING_DIRECTORY}/${PACK_DIRECTORY}/" ]; then
    echo "Applying artifact(s) to the existing deployment pattern >> $DEPLOYMENT_PATTERN..."
@@ -96,80 +88,60 @@ else
 fi
 
 if $INITIAL_RUN; then
-    if $WUM_UPDATE; then
-        # Add WUM product
-        echo "Adding the product - ${PRODUCT}-${PRODUCT_VERSION}..." &>> wum.log
-        ${WUM} add ${PRODUCT}-${PRODUCT_VERSION} -y  -v &>> wum.log
-        if [ $? -eq 0 ] ; then
-            echo "${PRODUCT}-${PRODUCT_VERSION} successfully added..." &>> wum.log
-        else
-            if [ $? -ne 1 ] ; then
-                exit ${FAILED_WUM_ADD}
+        if [ -f "${MODULE_PATH}/${PACK_DIRECTORY}/files/packs/${PRODUCT}-${PRODUCT_VERSION}.zip" ]; then
+            echo "Product pack found."
+            echo "Unzip the product pack..." &>> wum.log
+            ${UNZIP} -q ${MODULE_PATH}/${PACK_DIRECTORY}/files/packs/${PRODUCT}-${PRODUCT_VERSION}.zip -d ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/
+            if [ $? -ne 0 ] ; then
+                echo "Failed to unzip the product pack ${PRODUCT}-${PRODUCT_VERSION}..."
+                exit ${FAILED_UNZIP}
             fi
-        fi
-
-        # Get the updates
-        echo "Get latest updates for the product - ${PRODUCT}-${PRODUCT_VERSION}..." &>> wum.log
-        ${WUM} update ${PRODUCT}-${PRODUCT_VERSION} ${CHANNEL} &>> wum.log
-        if [ $? -eq 0 ] ; then
-            echo "${PRODUCT}-${PRODUCT_VERSION} successfully updated..." &>> wum.log
         else
-            if [ $? -eq 1 ] ; then
-                exit ${FAILED_WUM_UPDATE}
-            fi
-        fi
-
-        # Move the WUM updated product
-        echo "Moving the WUM updated product ${PRODUCT}-${PRODUCT_VERSION}..." &>> wum.log
-        ${MV} ${WUM_PRODUCT_HOME}/${PRODUCT}/${PRODUCT_VERSION}/${CHANNEL}/${PRODUCT}-${PRODUCT_VERSION}*.zip ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}.zip
-        if [ $? -ne 0 ] ; then
-          echo "Failed to move the WUM updated product from ${WUM_PRODUCT_HOME}/${PRODUCT}/${PRODUCT_VERSION}/${CHANNEL} to ${WORKING_DIRECTORY}/${PACK_DIRECTORY}..."
-          exit ${FAILED_TO_MOVE_WUMMED_PRODUCT}
-        fi
-    fi
-    if ! $WUM_UPDATE; then
-        # Download the product pack from S3 bucket
-        echo "Download the GA pack from S3 bucket..." &>> wum.log
-        wget https://s3.amazonaws.com/aws-cicd-product-packs/${PRODUCT}-${PRODUCT_VERSION}.zip -P ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/
-        if [ $? -eq 1 ] ; then
+            echo "Product pack not found"
             exit ${FAILED_DOWNLOAD_PACK}
         fi
-    fi
+fi
 
-    # Unzip the product pack
-    echo "Unzip the product pack..." &>> wum.log
-    ${UNZIP} -q ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}.zip -d ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/
-    if [ $? -ne 0 ] ; then
-        echo "Failed to unzip the product pack ${PRODUCT}-${PRODUCT_VERSION}..."
-        exit ${FAILED_UNZIP}
-    fi
-    echo "Remove the zipped product..." &>> wum.log
-    ${RM} ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}.zip
-    if [ $? -ne 0 ] ; then
-        echo "Failed to remove the zipped product ${PRODUCT}-${PRODUCT_VERSION}..."
-        exit ${FAILED_RM_UNZIP}
-    fi
-
-    # Download the patch file for clustering
-    echo "Download the patch file from S3 bucket..." &>> wum.log
-    wget https://wso2-patches.s3-us-west-2.amazonaws.com/patch9999.zip -P ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/
+if [ -z  "$WUM_USER" ]; then
+    $VALID_SUBSCRIPTION=false
+else
+    cd ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/bin
+    wso2update_linux check -u ${WUM_USER} -p ${WUM_PASSWORD} -v &>> wum.log
     if [ $? -eq 1 ] ; then
-            exit ${FAILED_DOWNLOAD_PATCH_FILE}
+        exit ${FAILED_WUM_INIT}
     fi
+fi
 
-    # Unzip the patch file
-    echo "Unzip the patch file..." &>> wum.log
-    ${UNZIP} -q ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/patch9999.zip -d ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/
-    if [ $? -ne 0 ] ; then
-        echo "Failed to unzip the patch file patch9999.zip..."
-        exit ${FAILED_UNZIP}
+if $VALID_SUBSCRIPTION; then
+    echo "Get latest updates for the product - ${PRODUCT}-${PRODUCT_VERSION}..." &>> wum.log
+    cd ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/bin
+    wso2update_linux &>> wum.log
+    if [ $? -eq 0 ] ; then
+        echo "${PRODUCT}-${PRODUCT_VERSION} successfully updated..." &>> wum.log
+    else
+        exit ${FAILED_WUM_UPDATE}
     fi
-    echo "Remove the zipped patch file..." &>> wum.log
-    ${RM} ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/patch9999.zip
-    if [ $? -ne 0 ] ; then
-        echo "Failed to remove the zipped patch file patch9999.zip..."
-        exit ${FAILED_RM_UNZIP}
-    fi
+fi
+
+# Download the patch file for clustering
+echo "Download the patch file from S3 bucket..." &>> wum.log
+wget https://wso2-patches.s3-us-west-2.amazonaws.com/patch9999.zip -P ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/
+if [ $? -eq 1 ] ; then
+    exit ${FAILED_DOWNLOAD_PATCH_FILE}
+fi
+
+# Unzip the patch file
+echo "Unzip the patch file..." &>> wum.log
+${UNZIP} -q ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/patch9999.zip -d ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/
+if [ $? -ne 0 ] ; then
+    echo "Failed to unzip the patch file patch9999.zip..."
+    exit ${FAILED_UNZIP}
+fi
+echo "Remove the zipped patch file..." &>> wum.log
+${RM} ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/patches/patch9999.zip
+if [ $? -ne 0 ] ; then
+    echo "Failed to remove the zipped patch file patch9999.zip..."
+    exit ${FAILED_RM_UNZIP}
 fi
 
 echo "Applying Puppet modules..."
@@ -177,20 +149,6 @@ puppet apply -e "include ${PACK_DIRECTORY}" --modulepath=${MODULE_PATH}
 if [ $? -ne 0 ] ; then
   echo "Failed to apply Puppet for ${PRODUCT}-${PRODUCT_VERSION}..."
   exit ${FAILED_PUPPET_APPLY}
-fi
-
-if ! $INITIAL_RUN; then
-    if $WUM_UPDATE; then
-        echo "Running the in-place updates tool..."
-        ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/bin/update_linux -u ${WUM_USER} -p ${WUM_PASSWORD} -c ${CHANNEL} 2>&1 | tee inplace.log
-        cat inplace.log | grep "Merging configurations failed."
-        if [ $? -eq 0 ] ; then
-            echo "Failed to execute in-place updates for ${PRODUCT}-${PRODUCT_VERSION}. Merging configurations failed..."
-            exit ${FAILED_INPLACE_UPDATES}
-        fi
-        echo "In-place update successfully executed for ${PRODUCT}-${PRODUCT_VERSION}..."
-        ${RM} inplace.log
-    fi
 fi
 
 #Create the zipped folder
