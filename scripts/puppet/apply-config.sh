@@ -49,7 +49,7 @@ VALID_SUBSCRIPTION=true
 WUM_USER=${WUM_USERNAME}
 WUM_PASSWORD=${WUM_PASSWORD}
 WUM_PRODUCT_HOME="${WUM_HOME}"
-WSO2_UPDATE=`wso2update_linux`
+PACK_DOWNLOAD_PATH=${PACK_DOWNLOAD_PATH}
 WUM=`which wum`
 CP=`which cp`
 MV=`which mv`
@@ -57,15 +57,12 @@ RM=`which rm`
 UNZIP=`which unzip`
 ZIP=`which zip`
 PUPPET=`which puppet`
-FAILED_WUM_UPDATE=10
-FAILED_WUM_ADD=11
-FAILED_INPLACE_UPDATES=12
+FAILED_WSO2_UPDATE=10
 FAILED_PUPPET_APPLY=13
-FAILED_TO_MOVE_WUMMED_PRODUCT=14
 FAILED_UNZIP=15
 FAILED_RM_UNZIP=16
 FAILED_ARTIFACT_APPLY=17
-FAILED_WUM_INIT=18
+FAILED_WSO2_INIT=18
 FAILED_DOWNLOAD_PACK=19
 FAILED_DOWNLOAD_PATCH_FILE=20
 
@@ -88,17 +85,25 @@ else
 fi
 
 if $INITIAL_RUN; then
-        if [ -f "${MODULE_PATH}/${PACK_DIRECTORY}/files/packs/${PRODUCT}-${PRODUCT_VERSION}.zip" ]; then
-            echo "Product pack found."
-            echo "Unzip the product pack..." &>> wum.log
-            ${UNZIP} -q ${MODULE_PATH}/${PACK_DIRECTORY}/files/packs/${PRODUCT}-${PRODUCT_VERSION}.zip -d ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/
-            if [ $? -ne 0 ] ; then
-                echo "Failed to unzip the product pack ${PRODUCT}-${PRODUCT_VERSION}..."
-                exit ${FAILED_UNZIP}
-            fi
-        else
-            echo "Product pack not found"
+        echo "Downloading product pack."
+        wget ${PACK_DOWNLOAD_PATH} -P ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/
+        if [ $? -ne 0 ] ; then
+            echo "Failed to download product pack in location"
             exit ${FAILED_DOWNLOAD_PACK}
+        fi
+
+        echo "Unzip the product pack..." &>> wum.log
+        ${UNZIP} -q ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}.zip -d ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/
+        if [ $? -ne 0 ] ; then
+            echo "Failed to unzip the product pack ${PRODUCT}-${PRODUCT_VERSION}..."
+            exit ${FAILED_UNZIP}
+        fi
+
+         echo "Remove the zipped product..." &>> wum.log
+        ${RM} ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}.zip
+        if [ $? -ne 0 ] ; then
+            echo "Failed to remove the zipped product ${PRODUCT}-${PRODUCT_VERSION}..."
+            exit ${FAILED_RM_UNZIP}
         fi
 fi
 
@@ -108,7 +113,7 @@ else
     cd ${WORKING_DIRECTORY}/${PACK_DIRECTORY}/${PRODUCT}-${PRODUCT_VERSION}/bin
     wso2update_linux check -u ${WUM_USER} -p ${WUM_PASSWORD} -v &>> wum.log
     if [ $? -eq 1 ] ; then
-        exit ${FAILED_WUM_INIT}
+        exit ${FAILED_WSO2_INIT}
     fi
 fi
 
@@ -119,7 +124,7 @@ if $VALID_SUBSCRIPTION; then
     if [ $? -eq 0 ] ; then
         echo "${PRODUCT}-${PRODUCT_VERSION} successfully updated..." &>> wum.log
     else
-        exit ${FAILED_WUM_UPDATE}
+        exit ${FAILED_WSO2_UPDATE}
     fi
 fi
 
