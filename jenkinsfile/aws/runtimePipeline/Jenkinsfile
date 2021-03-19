@@ -113,6 +113,7 @@ node(NODE_MASTER) {
                          artifactsLoc       : "${ARTIFACT_LOC}",
                          zipLoc             : "${IMAGE_RESOURCES_LOC}",
                          wumHome            : "${WUM_HOME}",
+                         packDownloadPath   : "${env.PackDownloadPath}"
                          puppetConfLoc      : "${PUPPET_CONF_DIR}"])
         }
 

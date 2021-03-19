@@ -37,8 +37,8 @@ Metadata:
       - Label:
           default: WSO2 Subscription Credentials
         Parameters:
-          - WUMUsername
-          - WUMPassword
+          - WSO2Username
+          - WSO2Password
       - Label:
           default: GitHub Credentials
         Parameters:
@@ -51,6 +51,7 @@ Metadata:
       - Label:
           default: Product Configuration
         Parameters:
+          - PackDownloadPath
           - ProductName
           - DeploymentPattern
       - Label:
@@ -74,9 +75,9 @@ Metadata:
         default: Password
       RepositoryName:
         default: Github Webhook Repository Name
-      WUMUsername:
+      WSO2Username:
         default: Username
-      WUMPassword:
+      WSO2Password:
         default: Password
       WSO2InstanceType:
         default: Instance Type
@@ -100,6 +101,8 @@ Metadata:
         default: Jenkins console login Password
       Email:
         default: Email
+      PackDownloadPath:
+        default: Pack Download Path
 Parameters:
   IAMRole:
     Type: String
@@ -153,11 +156,11 @@ Parameters:
   RepositoryName:
     Type: String
     Description: Github repository to configure webhook. eg:cicd-test-artifacts (optional)
-  WUMUsername:
+  WSO2Username:
     Type: String
     Default: ""
     Description: A valid WSO2 subscription to receive updates (optional)
-  WUMPassword:
+  WSO2Password:
     Type: String
     NoEcho: true
   DBUsername:
@@ -343,6 +346,7 @@ Resources:
           sed -i "s/.*Email.*/env.Email=\'${Email}\'/g" /home/jenkins/jenkins_env
           sed -i "s/.*IAMRole.*/env.IAMRole=\'${IAMRole}\'/g" /home/jenkins/jenkins_env
           sed -i "s/.*TransitGatewayId.*/env.TransitGatewayId=\'${WSO2TransitGateway}\'/g" /home/jenkins/jenkins_env
+          sed -i "s/.*PackDownloadPath.*/env.PackDownloadPath=\'${PackDownloadPath}\'/g" /home/jenkins/jenkins_env
 
           export publichostname=$(ec2metadata --public-hostname)
           sed -i "s/<jenkinsUrl>.*:8080/<\/jenkinsUrl>/<jenkinsUrl>$publichostname:8080<\/jenkinsUrl>/g" /var/lib/jenkins/jenkins.model.JenkinsLocationConfiguration.xml
@@ -352,7 +356,7 @@ Resources:
           export githubhookurl=https://api.github.com/repos/${GitHubUsername}/${RepositoryName}/hooks
           sleep 120
           export JENKINS_CRUMB=$(curl -s 'http://admin:admin@localhost:8080/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)')
-          curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"wum_creds","username":"${WUMUsername}","password": "${WUMPassword}","description": "WUM Credentials","$class": "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"}}' -v
+          curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"wum_creds","username":"${WSO2Username}","password": "${WSO2Password}","description": "WSO2 Credentials","$class": "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"}}' -v
           curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"github_creds","username":"${GitHubUsername}","password": "${GitHubPassword}","description": "Github Credentials","$class": "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"}}' -v
           curl -s -X POST -H $JENKINS_CRUMB 'http://admin:admin@localhost:8080/credentials/store/system/domain/_/createCredentials' --data-urlencode 'json={"": "0","credentials":{"scope":"GLOBAL","id":"db_creds","username":"${DBUsername}","password": "${DBPassword}","description": "Databse Credentials","$class": "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"}}' -v
           echo $JENKINS_CRUMB >> /home/jenkins/log.txt
