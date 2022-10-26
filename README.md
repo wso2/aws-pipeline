@@ -1,4 +1,8 @@
 # Resources for WSO2 AWS Pipeline
+> **Warning**
+>
+>   The CICD pipeline is deprecated.
+>
 
 ### Overview
 
